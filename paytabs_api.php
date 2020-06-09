@@ -42,6 +42,35 @@ class PaytabsHelper
         return in_array($currencyCode, $list);
     }
 
+    /**
+     * @param $items: array of the products, each product has the format ['name' => xx, 'quantity' => x, 'price' =>x]
+     * @return array to pass to paypage API in the format ['products_per_title' => 'xx || xx ', 'quantity' => 'xx || xx', 'unit_price' => 'xx || xx']
+     */
+    static function prepare_products(array $items)
+    {
+        $glue = ' || ';
+
+        $products_str = implode($glue, array_map(function ($p) {
+            $name = str_replace('||', '/', $p['name']);
+            return $name;
+        }, $items));
+
+        $quantity = implode($glue, array_map(function ($p) {
+            return $p['quantity'];
+        }, $items));
+
+        $unit_price = implode($glue, array_map(function ($p) {
+            return $p['price'];
+        }, $items));
+
+
+        return [
+            'products_per_title' => $products_str,
+            'quantity'           => $quantity,
+            'unit_price'         => $unit_price,
+        ];
+    }
+
     public static function getCountryDetails($iso_2)
     {
         $countryPhoneList = array(
@@ -215,6 +244,7 @@ class PaytabsHelper
             'PN' => array('name' => 'PITCAIRN', 'code' => '870'),
             'PR' => array('name' => 'PUERTO RICO', 'code' => '1'),
             'PT' => array('name' => 'PORTUGAL', 'code' => '351'),
+            'PS' => array('name' => 'PALESTINE', 'code' => '970'),
             'PW' => array('name' => 'PALAU', 'code' => '680'),
             'PY' => array('name' => 'PARAGUAY', 'code' => '595'),
             'QA' => array('name' => 'QATAR', 'code' => '974'),
@@ -625,7 +655,7 @@ class PaytabsApi
     {
         $fields_string = "";
         foreach ($fields as $key => $value) {
-            $fields_string .= $key . '=' . $value . '&';
+            $fields_string .= $key . '=' . urlencode($value) . '&';
         }
         $fields_string = rtrim($fields_string, '&');
         $ch = curl_init();

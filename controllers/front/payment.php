@@ -59,6 +59,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     if ($address_shipping->id_state)
       $shipping_state = new State((int) ($address_shipping->id_state));
 
+    $paymentType = PaytabsHelper::paymentType($paymentKey);
+
     // Amount
     $totals = $cart->getSummaryDetails();
     $amount = $totals['total_price']; // number_format($cart->getOrderTotal(true, Cart::BOTH), 2, '.', '');
@@ -70,17 +72,15 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $products = $cart->getProducts();
 
-    $products_str = implode(' || ', array_map(function ($p) {
-      return $p['name'];
-    }, $products));
+    $items_arr = array_map(function ($p) {
+      return [
+        'name' => $p['name'],
+        'quantity' => $p['cart_quantity'],
+        'price' => $p['price_wt']
+      ];
+    }, $products);
 
-    $quantity = implode(' || ', array_map(function ($p) {
-      return $p['cart_quantity'];
-    }, $products));
-
-    $unit_price = implode(' || ', array_map(function ($p) {
-      return $p['price_wt'];
-    }, $products));
+    $products_arr = PaytabsHelper::prepare_products($items_arr);
 
 
     //
@@ -110,45 +110,46 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     }
 
     $request_param = [
-      'cc_first_name'        => $address_invoice->firstname,
-      'cc_last_name'         => $address_invoice->lastname,
-      'phone_number'         => $phone_number,
-      'cc_phone_number'      => $country_details['phone'],
-      'billing_address'      => $address_invoice->address1 . ' ' . $address_invoice->address2,
-      'city'                 => $address_invoice->city,
-      'state'                => PaytabsHelper::getNonEmpty($invoice_state->name, $address_invoice->city, 'N/A'),
-      'postal_code'          => $address_invoice->postcode,
-      'country'              => PaytabsHelper::countryGetiso3($invoice_country->iso_code),
-      'email'                => $customer->email,
-
-      'amount'               => $amount + $total_discount, // $total_product_ammout + $cart->getOrderTotal(true, Cart::ONLY_SHIPPING),
-      'currency'             => strtoupper($currency->iso_code),
-      'quantity'             => $quantity,
-      "discount"             => $total_discount,
-      'other_charges'        => $total_shipping + $total_tax,
-      'unit_price'           => $unit_price,
+      'payment_type'         => $paymentType,
 
       'title'                => $address_invoice->firstname . '  ' . $address_invoice->lastname,
-      'products_per_title'   => $products_str,
 
+      'currency'             => strtoupper($currency->iso_code),
+      'amount'               => $amount + $total_discount, // $total_product_ammout + $cart->getOrderTotal(true, Cart::ONLY_SHIPPING),
+      'other_charges'        => $total_shipping + $total_tax,
+      "discount"             => $total_discount,
+
+      'reference_no'         => $cart->id,
+
+      'cc_first_name'        => $address_invoice->firstname,
+      'cc_last_name'         => $address_invoice->lastname,
+      'cc_phone_number'      => $country_details['phone'],
+      'phone_number'         => $phone_number,
+      'email'                => $customer->email,
+
+      'billing_address'      => $address_invoice->address1 . ' ' . $address_invoice->address2,
+      'state'                => PaytabsHelper::getNonEmpty($invoice_state->name, $address_invoice->city, 'N/A'),
+      'city'                 => $address_invoice->city,
+      'postal_code'          => $address_invoice->postcode,
+      'country'              => PaytabsHelper::countryGetiso3($invoice_country->iso_code),
+
+      'shipping_firstname'   => $address_shipping->firstname,
+      'shipping_lastname'    => $address_shipping->lastname,
       'address_shipping'     => $address_shipping->address1 . ' ' . $address_shipping->address2,
       'city_shipping'        => $address_shipping->city,
       'state_shipping'       => $address_shipping->id_state ? $shipping_state->name : $address_shipping->city,
       'postal_code_shipping' => $address_shipping->postcode,
       'country_shipping'     => PaytabsHelper::countryGetiso3($shipping_country->iso_code),
 
-      // 'ShippingMethod'       => $shippingMethod->name,
-      // 'DeliveryType'         => $shippingMethod->delay[1],
+      'site_url'             => $siteUrl,
+      'return_url'           => $return_url,
 
       'msg_lang'             => $lang_,
       'cms_with_version'     => 'Prestashop ' . _PS_VERSION_,
-      'reference_no'         => $cart->id,
-      'CustomerId'           => $customer->id,
-
-      'site_url'             => $siteUrl,
-      'return_url'           => $return_url
     ];
 
-    return $request_param;
+    $post_arr = array_merge($request_param, $products_arr);
+
+    return $post_arr;
   }
 }
