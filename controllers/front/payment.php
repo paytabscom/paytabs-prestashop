@@ -103,6 +103,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       '111111'
     );
 
+    if (empty($invoice_state)) {
+      $invoice_state = null;
+    } else {
+      $invoice_state = $invoice_state->name;
+    }
+
     $request_param = [
       'cc_first_name'        => $address_invoice->firstname,
       'cc_last_name'         => $address_invoice->lastname,
@@ -110,7 +116,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       'cc_phone_number'      => $country_details['phone'],
       'billing_address'      => $address_invoice->address1 . ' ' . $address_invoice->address2,
       'city'                 => $address_invoice->city,
-      'state'                => PaytabsHelper::getNonEmpty($invoice_state->name, $address_invoice->city),
+      'state'                => PaytabsHelper::getNonEmpty($invoice_state->name, $address_invoice->city, 'N/A'),
       'postal_code'          => $address_invoice->postcode,
       'country'              => PaytabsHelper::countryGetiso3($invoice_country->iso_code),
       'email'                => $customer->email,
