@@ -128,7 +128,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       'email'                => $customer->email,
 
       'billing_address'      => $address_invoice->address1 . ' ' . $address_invoice->address2,
-      'state'                => PaytabsHelper::getNonEmpty($invoice_state->name, $address_invoice->city, 'N/A'),
+      'state'                => PaytabsHelper::getNonEmpty($invoice_state, $address_invoice->city, 'N/A'),
       'city'                 => $address_invoice->city,
       'postal_code'          => $address_invoice->postcode,
       'country'              => PaytabsHelper::countryGetiso3($invoice_country->iso_code),
@@ -146,6 +146,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
       'msg_lang'             => $lang_,
       'cms_with_version'     => 'Prestashop ' . _PS_VERSION_,
+
+      'ip_customer'          => '',
     ];
 
     $post_arr = array_merge($request_param, $products_arr);

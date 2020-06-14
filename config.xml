@@ -2,7 +2,7 @@
 <module>
 	<name>paytabs_paypage</name>
 	<displayName><![CDATA[PayTabs - PayPage]]></displayName>
-	<version><![CDATA[2.0.1]]></version>
+	<version><![CDATA[2.0.2]]></version>
 	<description><![CDATA[3rd party payment gateway]]></description>
 	<author><![CDATA[PayTabs]]></author>
 	<tab><![CDATA[payments_gateways]]></tab>
