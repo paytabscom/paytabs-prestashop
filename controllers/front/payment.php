@@ -76,7 +76,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       return [
         'name' => $p['name'],
         'quantity' => $p['cart_quantity'],
-        'price' => $p['price_wt']
+        'price' => $p['price']
       ];
     }, $products);
 
@@ -151,6 +151,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     ];
 
     $post_arr = array_merge($request_param, $products_arr);
+
+    $sums = PaytabsHelper::round_amount($post_arr);
 
     return $post_arr;
   }

@@ -594,6 +594,51 @@ class PaytabsHelper
         }
         return false;
     }
+
+    /**
+     * Try to get ride of the ugly message: "Your total amount is not matching to sum of unit price amounts per quantity".
+     * Because of rounding products' prices, may occur some diff between the sums of products & total amount.
+     * if that diff is under 1 then change the "amount" to total sums.
+     * @return true if the calculation is correct or the amount been rounded in @param $post_arr['amount']
+     */
+    public static function round_amount(array &$post_arr)
+    {
+        $threshold = 1.0;
+
+        $amount = $post_arr['amount'];
+        $other_charges = $post_arr['other_charges'];
+        $quantities = $post_arr['quantity'];
+        $unit_prices = $post_arr['unit_price'];
+
+        $sums = 0;
+        $products_q = explode(' || ', $quantities);
+        $products_p = explode(' || ', $unit_prices);
+        for ($i = 0; $i < count($products_p); $i++) {
+            $sums += ($products_p[$i] * $products_q[$i]);
+        }
+
+        $sums += $other_charges;
+
+        $diff = $amount - $sums;
+        if ($diff != 0) {
+            $_logParams = json_encode($post_arr);
+
+            if (abs($diff) > $threshold) {
+                $_logMsg = ("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]");
+                PrestaShopLogger::addLog($_logMsg, 3, null, 'Cart', $post_arr['reference_no'], true, null);
+            } else {
+                $_logMsg = ("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]");
+                PrestaShopLogger::addLog($_logMsg, 2, null, 'Cart', $post_arr['reference_no'], true, null);
+
+                $other_charges += $diff;
+                $post_arr['other_charges'] = $other_charges;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
 }
 
 
