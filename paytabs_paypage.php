@@ -12,7 +12,12 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require_once __DIR__ . '/paytabs_api.php';
+require_once __DIR__ . '/paytabs_core.php';
+
+function paytabs_error_log($msg, $severity)
+{
+    PrestaShopLogger::addLog($msg, $severity);
+}
 
 class PayTabs_PayPage extends PaymentModule
 {

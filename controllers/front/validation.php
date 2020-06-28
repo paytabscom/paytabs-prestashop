@@ -13,14 +13,31 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             return;
         }
 
-        $paytabsHelper = new PaytabsHelper();
-        $paytabsApi = $paytabsHelper->pt($paymentKey);
+        $paymentType = PaytabsHelper::paymentType($paymentKey);
+        $merchant_email = Configuration::get("merchant_email_{$paymentType}");
+        $merchant_secretKey = Configuration::get("merchant_secret_{$paymentType}");
+
+        $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
 
         $result = $paytabsApi->verify_payment($paymentRef);
 
-        $response = ($result && isset($result->response_code));
+        $response = $result->success;
         if (!$response) {
-            PrestaShopLogger::addLog('PayTabs - PagePage: verify request error ' . $paymentRef, 3, null, 'Cart', null, true, null);
+            $logMsg = json_encode($result);
+            PrestaShopLogger::addLog(
+                "PayTabs - PagePage: payment failed, payment_ref = {$paymentRef}, response: [{$logMsg}]",
+                3,
+                null,
+                'Cart',
+                $result->reference_no,
+                true,
+                null
+            );
+
+            $this->warning[] = $this->l($result->result);
+            $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
+                'step' => '3'
+            ]));
             return;
         }
 
@@ -66,44 +83,25 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             Tools::redirect('index.php?controller=order&step=1');
         }
 
-        $success = $result->response_code == 100;
-        PrestaShopLogger::addLog(
-            'PayTabs - PagePage: payment ' . ($success ? 'success' : 'failed') . ' ' . json_encode($result),
-            $success ? 1 : 2,
-            null,
-            'Cart',
-            $cartId,
-            true,
-            null
+        /**
+         * Place the order
+         */
+        $amountPaid = $result->amount;
+        $this->module->validateOrder(
+            (int) $cart->id,
+            Configuration::get('PS_OS_PAYMENT'),
+            (float) $amountPaid,
+            $this->module->displayName . " ({$paymentType})",
+            $result->result, // message
+            null, // extra vars
+            (int) $cart->id_currency,
+            false,
+            $customer->secure_key
         );
 
-        if ($success) {
-            /**
-             * Place the order
-             */
-            $amountPaid = $result->amount;
-            $paymentName = PaytabsHelper::paymentType($paymentKey);
-            $this->module->validateOrder(
-                (int) $cart->id,
-                Configuration::get('PS_OS_PAYMENT'),
-                (float) $amountPaid,
-                $this->module->displayName . " ({$paymentName})",
-                $result->result, // message
-                null, // extra vars
-                (int) $cart->id_currency,
-                false,
-                $customer->secure_key
-            );
-
-            /**
-             * Redirect the customer to the order confirmation page
-             */
-            Tools::redirect('index.php?controller=order-confirmation&id_cart=' . (int) $cart->id . '&id_module=' . (int) $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key);
-        } else {
-            $this->warning[] = $this->l($result->result);
-            $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
-                'step' => '3'
-            ]));
-        }
+        /**
+         * Redirect the customer to the order confirmation page
+         */
+        Tools::redirect('index.php?controller=order-confirmation&id_cart=' . (int) $cart->id . '&id_module=' . (int) $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key);
     }
 }
