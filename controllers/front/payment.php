@@ -114,15 +114,18 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $pt_holder = new PaytabsHolder();
     $pt_holder
       ->set01PaymentCode($paymentType)
-      ->set02Title($address_invoice->firstname . ' ' . $address_invoice->lastname)
-      ->set03Payment(
+      ->set02ReferenceNum($cart->id)
+      ->set03InvoiceInfo(
+        $address_invoice->firstname . ' ' . $address_invoice->lastname,
+        $lang_
+      )
+      ->set04Payment(
         strtoupper($currency->iso_code),
         $amount + $total_discount,
         $total_shipping + $total_tax,
         $total_discount
       )
-      ->set04Products($items_arr)
-      ->set05ReferenceNum($cart->id)
+      ->set05Products($items_arr)
       ->set06CustomerInfo(
         $address_invoice->firstname,
         $address_invoice->lastname,
@@ -147,11 +150,10 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         PaytabsHelper::countryGetiso3($shipping_country->iso_code)
       )
       ->set09URLs($siteUrl, $return_url)
-      ->set10Lang($lang_)
-      ->set11CMSVersion('Prestashop ' . _PS_VERSION_)
-      ->set12IPCustomer('');
+      ->set10CMSVersion('Prestashop ' . _PS_VERSION_)
+      ->set11IPCustomer('');
 
-    $post_arr = $pt_holder->build(true);
+    $post_arr = $pt_holder->pt_build(true);
 
     return $post_arr;
   }
