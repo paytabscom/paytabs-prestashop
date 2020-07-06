@@ -12,7 +12,12 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require_once __DIR__ . '/paytabs_api.php';
+require_once __DIR__ . '/paytabs_core.php';
+
+function paytabs_error_log($msg, $severity)
+{
+    PrestaShopLogger::addLog($msg, $severity);
+}
 
 class PayTabs_PayPage extends PaymentModule
 {
@@ -30,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.0.3';
+        $this->version                = '2.1.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;

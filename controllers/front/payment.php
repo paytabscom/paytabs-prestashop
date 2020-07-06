@@ -13,8 +13,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     parent::initContent();
 
     $paymentKey = Tools::getValue('method');
-    $paytabsHelper = new PaytabsHelper();
-    $paytabsApi = $paytabsHelper->pt($paymentKey);
+    $paymentType = PaytabsHelper::paymentType($paymentKey);
+
+    $merchant_email = Configuration::get("merchant_email_{$paymentType}");
+    $merchant_secretKey = Configuration::get("merchant_secret_{$paymentType}");
+
+    $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
 
     //
 
@@ -26,15 +30,16 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     // Create paypage
     $paypage = $paytabsApi->create_pay_page($request_param);
 
-    PrestaShopLogger::addLog(json_encode($paypage), 1, null, 'Cart', $cart->id, true, $cart->id_customer);
+    $_logMsg = 'PayTabs: ' . json_encode($paypage);
+    PrestaShopLogger::addLog($_logMsg, ($paypage->success ? 1 : 3), null, 'Cart', $cart->id, true, $cart->id_customer);
 
     //
 
-    if ($paypage && $paypage->response_code == 4012) {
+    if ($paypage->success) {
       $payment_url = $paypage->payment_url;
       header("location: $payment_url");
     } else {
-      $this->warning[] = $this->l($paypage->details . $paypage->result);
+      $this->warning[] = $this->l($paypage->result);
       $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
         'step' => '3'
       ]));
@@ -44,6 +49,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
   function prepare_order($cart, $paymentKey)
   {
+    $paymentType = PaytabsHelper::paymentType($paymentKey);
+
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
 
@@ -58,8 +65,6 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     if ($address_shipping->id_state)
       $shipping_state = new State((int) ($address_shipping->id_state));
-
-    $paymentType = PaytabsHelper::paymentType($paymentKey);
 
     // Amount
     $totals = $cart->getSummaryDetails();
@@ -79,9 +84,6 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         'price' => $p['price']
       ];
     }, $products);
-
-    $products_arr = PaytabsHelper::prepare_products($items_arr);
-
 
     //
 
@@ -109,50 +111,51 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       $invoice_state = $invoice_state->name;
     }
 
-    $request_param = [
-      'payment_type'         => $paymentType,
+    $ip_customer = Tools::getRemoteAddr();
 
-      'title'                => $address_invoice->firstname . '  ' . $address_invoice->lastname,
+    $pt_holder = new PaytabsHolder();
+    $pt_holder
+      ->set01PaymentCode($paymentType)
+      ->set02ReferenceNum($cart->id)
+      ->set03InvoiceInfo(
+        $address_invoice->firstname . ' ' . $address_invoice->lastname,
+        $lang_
+      )
+      ->set04Payment(
+        strtoupper($currency->iso_code),
+        $amount + $total_discount,
+        $total_shipping + $total_tax,
+        $total_discount
+      )
+      ->set05Products($items_arr)
+      ->set06CustomerInfo(
+        $address_invoice->firstname,
+        $address_invoice->lastname,
+        $country_details['phone'],
+        $phone_number,
+        $customer->email
+      )
+      ->set07Billing(
+        $address_invoice->address1 . ' ' . $address_invoice->address2,
+        $invoice_state,
+        $address_invoice->city,
+        $address_invoice->postcode,
+        PaytabsHelper::countryGetiso3($invoice_country->iso_code)
+      )
+      ->set08Shipping(
+        $address_shipping->firstname,
+        $address_shipping->lastname,
+        $address_shipping->address1 . ' ' . $address_shipping->address2,
+        $address_shipping->id_state ? $shipping_state->name : $address_shipping->city,
+        $address_shipping->city,
+        $address_shipping->postcode,
+        PaytabsHelper::countryGetiso3($shipping_country->iso_code)
+      )
+      ->set09URLs($siteUrl, $return_url)
+      ->set10CMSVersion('Prestashop ' . _PS_VERSION_)
+      ->set11IPCustomer($ip_customer);
 
-      'currency'             => strtoupper($currency->iso_code),
-      'amount'               => $amount + $total_discount, // $total_product_ammout + $cart->getOrderTotal(true, Cart::ONLY_SHIPPING),
-      'other_charges'        => $total_shipping + $total_tax,
-      "discount"             => $total_discount,
-
-      'reference_no'         => $cart->id,
-
-      'cc_first_name'        => $address_invoice->firstname,
-      'cc_last_name'         => $address_invoice->lastname,
-      'cc_phone_number'      => $country_details['phone'],
-      'phone_number'         => $phone_number,
-      'email'                => $customer->email,
-
-      'billing_address'      => $address_invoice->address1 . ' ' . $address_invoice->address2,
-      'state'                => PaytabsHelper::getNonEmpty($invoice_state, $address_invoice->city, 'N/A'),
-      'city'                 => $address_invoice->city,
-      'postal_code'          => $address_invoice->postcode,
-      'country'              => PaytabsHelper::countryGetiso3($invoice_country->iso_code),
-
-      'shipping_firstname'   => $address_shipping->firstname,
-      'shipping_lastname'    => $address_shipping->lastname,
-      'address_shipping'     => $address_shipping->address1 . ' ' . $address_shipping->address2,
-      'city_shipping'        => $address_shipping->city,
-      'state_shipping'       => $address_shipping->id_state ? $shipping_state->name : $address_shipping->city,
-      'postal_code_shipping' => $address_shipping->postcode,
-      'country_shipping'     => PaytabsHelper::countryGetiso3($shipping_country->iso_code),
-
-      'site_url'             => $siteUrl,
-      'return_url'           => $return_url,
-
-      'msg_lang'             => $lang_,
-      'cms_with_version'     => 'Prestashop ' . _PS_VERSION_,
-
-      'ip_customer'          => '',
-    ];
-
-    $post_arr = array_merge($request_param, $products_arr);
-
-    $sums = PaytabsHelper::round_amount($post_arr);
+    $post_arr = $pt_holder->pt_build(true);
 
     return $post_arr;
   }
