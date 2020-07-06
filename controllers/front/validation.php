@@ -6,18 +6,22 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
     public function postProcess()
     {
         $paymentKey = Tools::getValue('p');
-        $paymentRef = Tools::getValue('payment_reference');
+        $paymentRef = Tools::getValue('tranRef');
 
-        if (!isset($paymentRef, $paymentKey)) {
+        if (!isset($paymentRef, $paymentKey) || !$paymentRef || !$paymentKey) {
             PrestaShopLogger::addLog('PayTabs - PagePage: params error', 3, null, 'Cart', null, true, null);
+            $this->warning[] = $this->l('Payment reference is missing!');
+            $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
+                'step' => '3'
+            ]));
             return;
         }
 
         $paymentType = PaytabsHelper::paymentType($paymentKey);
-        $merchant_email = Configuration::get("merchant_email_{$paymentType}");
-        $merchant_secretKey = Configuration::get("merchant_secret_{$paymentType}");
+        $profile_id = Configuration::get("profile_id_{$paymentType}");
+        $server_key = Configuration::get("server_key_{$paymentType}");
 
-        $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
+        $paytabsApi = PaytabsApi::getInstance($profile_id, $server_key);
 
         $result = $paytabsApi->verify_payment($paymentRef);
 
@@ -29,12 +33,12 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
                 3,
                 null,
                 'Cart',
-                $result->reference_no,
+                $result->cart_id,
                 true,
                 null
             );
 
-            $this->warning[] = $this->l($result->result);
+            $this->warning[] = $this->l($result->message);
             $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
                 'step' => '3'
             ]));
@@ -44,7 +48,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Get cart id from response
          */
-        $cartId = $result->reference_no;
+        $cartId = $result->cart_id;
         $cart = new Cart((int) $cartId);
         $authorized = false;
 
@@ -86,13 +90,13 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Place the order
          */
-        $amountPaid = $result->amount;
+        $amountPaid = $result->cart_amount;
         $this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
             (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
-            $result->result, // message
+            $result->message, // message
             null, // extra vars
             (int) $cart->id_currency,
             false,

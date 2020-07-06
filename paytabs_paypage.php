@@ -12,7 +12,7 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-require_once __DIR__ . '/paytabs_core.php';
+require_once __DIR__ . '/paytabs_core2.php';
 
 function paytabs_error_log($msg, $severity)
 {
@@ -35,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.1.0';
+        $this->version                = '3.0.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -105,14 +105,14 @@ class PayTabs_PayPage extends PaymentModule
                     'input' => array(
                         array(
                             'type' => 'text',
-                            'label' => ('Merchant E-Mail'),
-                            'name' => 'merchant_email_' . $code,
+                            'label' => ('Profile ID'),
+                            'name' => 'profile_id_' . $code,
                             'required' => true
                         ),
                         array(
                             'type' => 'text',
-                            'label' => ('Secret Key'),
-                            'name' => 'merchant_secret_' . $code,
+                            'label' => ('Server Key'),
+                            'name' => 'server_key_' . $code,
                             'required' => true
                         ),
                         array(
@@ -157,8 +157,8 @@ class PayTabs_PayPage extends PaymentModule
 
         $values = array_reduce(PaytabsApi::PAYMENT_TYPES, function ($acc, $method) {
             $code = $method['name'];
-            $acc["merchant_email_{$code}"] = Tools::getValue("merchant_email_{$code}", Configuration::get("merchant_email_{$code}"));
-            $acc["merchant_secret_{$code}"] = Tools::getValue("merchant_secret_{$code}", Configuration::get("merchant_secret_{$code}"));
+            $acc["profile_id_{$code}"] = Tools::getValue("profile_id_{$code}", Configuration::get("profile_id_{$code}"));
+            $acc["server_key_{$code}"] = Tools::getValue("server_key_{$code}", Configuration::get("server_key_{$code}"));
             $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
             return $acc;
         }, []);
@@ -179,11 +179,11 @@ class PayTabs_PayPage extends PaymentModule
         foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
             $code = $method['name'];
             if (Tools::getValue("active_{$code}")) {
-                if (!Tools::getValue("merchant_email_{$code}")) {
-                    $this->_postErrors[] = "{$method['title']}: Merchant E-Mail is required.";
+                if (!Tools::getValue("profile_id_{$code}")) {
+                    $this->_postErrors[] = "{$method['title']}: Profile ID is required.";
                 }
-                if (!Tools::getValue("merchant_secret_{$code}")) {
-                    $this->_postErrors[] = "{$method['title']}: Merchant Secret Key is required.";
+                if (!Tools::getValue("server_key_{$code}")) {
+                    $this->_postErrors[] = "{$method['title']}: Server Key is required.";
                 }
             }
         }
@@ -194,8 +194,8 @@ class PayTabs_PayPage extends PaymentModule
         if (Tools::isSubmit('btnSubmit')) {
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
                 $code = $method['name'];
-                Configuration::updateValue("merchant_email_{$code}", Tools::getValue("merchant_email_{$code}"));
-                Configuration::updateValue("merchant_secret_{$code}", Tools::getValue("merchant_secret_{$code}"));
+                Configuration::updateValue("profile_id_{$code}", Tools::getValue("profile_id_{$code}"));
+                Configuration::updateValue("server_key_{$code}", Tools::getValue("server_key_{$code}"));
                 Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
             }
         }
