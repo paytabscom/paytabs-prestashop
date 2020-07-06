@@ -111,6 +111,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       $invoice_state = $invoice_state->name;
     }
 
+    $ip_customer = Tools::getRemoteAddr();
+
     $pt_holder = new PaytabsHolder();
     $pt_holder
       ->set01PaymentCode($paymentType)
@@ -151,7 +153,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       )
       ->set09URLs($siteUrl, $return_url)
       ->set10CMSVersion('Prestashop ' . _PS_VERSION_)
-      ->set11IPCustomer('');
+      ->set11IPCustomer($ip_customer);
 
     $post_arr = $pt_holder->pt_build(true);
 
