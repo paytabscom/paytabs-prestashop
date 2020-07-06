@@ -35,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.0.3';
+        $this->version                = '2.1.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
