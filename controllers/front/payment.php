@@ -55,16 +55,16 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $customer = new Customer(intval($cart->id_customer));
 
     $address_invoice = new Address(intval($cart->id_address_invoice));
-    // $address_shipping = new Address(intval($cart->id_address_delivery));
+    $address_shipping = new Address(intval($cart->id_address_delivery));
 
     $invoice_country = new Country($address_invoice->id_country);
-    // $shipping_country = new Country($address_shipping->id_country);
+    $shipping_country = new Country($address_shipping->id_country);
 
     if ($address_invoice->id_state)
       $invoice_state = new State((int) ($address_invoice->id_state));
 
-    // if ($address_shipping->id_state)
-    //   $shipping_state = new State((int) ($address_shipping->id_state));
+    if ($address_shipping->id_state)
+      $shipping_state = new State((int) ($address_shipping->id_state));
 
     // Amount
     $totals = $cart->getSummaryDetails();
@@ -89,10 +89,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     //
 
-    // $lang_ = "English";
-    // if ($this->context->language->iso_code == "ar") {
-    //   $lang_  = "Arabic";
-    // }
+    $lang_ = $this->context->language->iso_code;
 
     // $siteUrl = Context::getContext()->shop->getBaseURL(true);
     $return_url = Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['p' => $paymentKey]);
@@ -101,16 +98,26 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     // $country_details = PaytabsHelper::getCountryDetails($invoice_country->iso_code);
 
-    // $phone_number = PaytabsHelper::getNonEmpty(
-    //   $address_invoice->phone,
-    //   $address_invoice->phone_mobile,
-    //   '111111'
-    // );
+    $phone_number = PaytabsHelper::getNonEmpty(
+      $address_invoice->phone,
+      $address_invoice->phone_mobile
+    );
+
+    $shipping_phone_number = PaytabsHelper::getNonEmpty(
+      $address_shipping->phone,
+      $address_shipping->phone_mobile
+    );
 
     if (empty($invoice_state)) {
       $invoice_state = null;
     } else {
       $invoice_state = $invoice_state->name;
+    }
+
+    if (empty($shipping_state)) {
+      $shipping_state = null;
+    } else {
+      $shipping_state = $shipping_state->name;
     }
 
     $ip_customer = Tools::getRemoteAddr();
@@ -128,14 +135,28 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set04CustomerDetails(
         $address_invoice->firstname . ' ' . $address_invoice->lastname,
         $customer->email,
+        $phone_number,
         $address_invoice->address1 . ' ' . $address_invoice->address2,
         $address_invoice->city,
         $invoice_state,
         PaytabsHelper::countryGetiso3($invoice_country->iso_code),
+        $address_invoice->postcode,
         $ip_customer
       )
-      ->set05URLs($return_url, null)
-      ->set06HideShipping(false);
+      ->set05ShippingDetails(
+        $address_shipping->firstname . ' ' . $address_shipping->lastname,
+        $customer->email,
+        $shipping_phone_number,
+        $address_shipping->address1 . ' ' . $address_shipping->address2,
+        $address_shipping->city,
+        $shipping_state,
+        PaytabsHelper::countryGetiso3($shipping_country->iso_code),
+        $address_shipping->postcode,
+        null
+      )
+      ->set06HideShipping(false)
+      ->set07URLs($return_url, null)
+      ->set08Lang($lang_);
 
     $post_arr = $pt_holder->pt_build();
 
