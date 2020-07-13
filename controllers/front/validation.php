@@ -13,28 +13,35 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             return;
         }
 
+        //
+
         $paymentType = PaytabsHelper::paymentType($paymentKey);
         $merchant_email = Configuration::get("merchant_email_{$paymentType}");
         $merchant_secretKey = Configuration::get("merchant_secret_{$paymentType}");
 
         $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
 
+        //
+
         $result = $paytabsApi->verify_payment($paymentRef);
 
-        $response = $result->success;
-        if (!$response) {
+        $success = $result->success;
+        $message = $result->result;
+        $cartId = PaytabsHelper::getNonEmpty($result->reference_no, 0);
+
+        if (!$success) {
             $logMsg = json_encode($result);
             PrestaShopLogger::addLog(
                 "PayTabs - PagePage: payment failed, payment_ref = {$paymentRef}, response: [{$logMsg}]",
                 3,
                 null,
                 'Cart',
-                $result->reference_no,
+                $cartId,
                 true,
                 null
             );
 
-            $this->warning[] = $this->l($result->result);
+            $this->warning[] = $this->l($message);
             $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
                 'step' => '3'
             ]));
@@ -44,7 +51,6 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Get cart id from response
          */
-        $cartId = $result->reference_no;
         $cart = new Cart((int) $cartId);
         $authorized = false;
 
@@ -92,7 +98,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             Configuration::get('PS_OS_PAYMENT'),
             (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
-            $result->result, // message
+            $message, // message
             null, // extra vars
             (int) $cart->id_currency,
             false,
