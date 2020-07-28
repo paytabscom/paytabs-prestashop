@@ -5,6 +5,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 {
   public $ssl = true;
 
+  private $paymentType;
+
   /**
    * Order submitted, redirect to PayTabs
    */
@@ -13,10 +15,10 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     parent::initContent();
 
     $paymentKey = Tools::getValue('method');
-    $paymentType = PaytabsHelper::paymentType($paymentKey);
+    $this->paymentType = PaytabsHelper::paymentType($paymentKey);
 
-    $merchant_email = Configuration::get("merchant_email_{$paymentType}");
-    $merchant_secretKey = Configuration::get("merchant_secret_{$paymentType}");
+    $merchant_email = $this->getConfig('merchant_email');
+    $merchant_secretKey = $this->getConfig('merchant_secret');
 
     $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
 
@@ -49,7 +51,9 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
   function prepare_order($cart, $paymentKey)
   {
-    $paymentType = PaytabsHelper::paymentType($paymentKey);
+    $hide_personal_info = (bool) $this->getConfig('hide_personal_info');
+    $hide_billing = (bool) $this->getConfig('hide_billing');
+    $hide_view_invoice = (bool) $this->getConfig('hide_view_invoice');
 
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
@@ -115,7 +119,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $pt_holder = new PaytabsHolder();
     $pt_holder
-      ->set01PaymentCode($paymentType)
+      ->set01PaymentCode($this->paymentType)
       ->set02ReferenceNum($cart->id)
       ->set03InvoiceInfo(
         $address_invoice->firstname . ' ' . $address_invoice->lastname,
@@ -151,12 +155,24 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         $address_shipping->postcode,
         PaytabsHelper::countryGetiso3($shipping_country->iso_code)
       )
-      ->set09URLs($siteUrl, $return_url)
-      ->set10CMSVersion('Prestashop ' . _PS_VERSION_)
-      ->set11IPCustomer($ip_customer);
+      ->set09HideOptions(
+        $hide_personal_info,
+        $hide_billing,
+        $hide_view_invoice
+      )
+      ->set10URLs($siteUrl, $return_url)
+      ->set11CMSVersion('Prestashop ' . _PS_VERSION_)
+      ->set12IPCustomer($ip_customer);
 
     $post_arr = $pt_holder->pt_build(true);
 
     return $post_arr;
+  }
+
+  //
+
+  private function getConfig($key)
+  {
+    return Configuration::get("{$key}_{$this->paymentType}");
   }
 }

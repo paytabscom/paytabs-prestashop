@@ -35,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.1.0';
+        $this->version                = '2.2.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -104,18 +104,6 @@ class PayTabs_PayPage extends PaymentModule
                     ),
                     'input' => array(
                         array(
-                            'type' => 'text',
-                            'label' => ('Merchant E-Mail'),
-                            'name' => 'merchant_email_' . $code,
-                            'required' => true
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => ('Secret Key'),
-                            'name' => 'merchant_secret_' . $code,
-                            'required' => true
-                        ),
-                        array(
                             'type' => 'switch',
                             'label' => 'Enabled',
                             'name' => 'active_' . $code,
@@ -132,6 +120,68 @@ class PayTabs_PayPage extends PaymentModule
                                     'value' => false,
                                     'label' => $this->trans('Disabled', array(), 'Admin.Global'),
                                 )
+                            ),
+                        ),
+                        array(
+                            'type' => 'text',
+                            'label' => ('Merchant E-Mail'),
+                            'name' => 'merchant_email_' . $code,
+                            'required' => true
+                        ),
+                        array(
+                            'type' => 'text',
+                            'label' => ('Secret Key'),
+                            'name' => 'merchant_secret_' . $code,
+                            'required' => true
+                        ),
+                        array(
+                            'type' => 'switch',
+                            'label' => 'Hide Personal info',
+                            'name' => 'hide_personal_info_' . $code,
+                            'is_bool' => true,
+                            'values' => array(
+                                array(
+                                    'id' => 'active_on',
+                                    'value' => true,
+                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                ),
+                                array(
+                                    'id' => 'active_off',
+                                    'value' => false,
+                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                )
+                            ),
+                        ),
+                        array(
+                            'type' => 'switch',
+                            'label' => 'Hide Billing info',
+                            'name' => 'hide_billing_' . $code,
+                            'is_bool' => true,
+                            'values' => array(
+                                [
+                                    'value' => true,
+                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                ],
+                                [
+                                    'value' => false,
+                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                ]
+                            ),
+                        ),
+                        array(
+                            'type' => 'switch',
+                            'label' => 'Hide View invoice',
+                            'name' => 'hide_view_invoice_' . $code,
+                            'is_bool' => true,
+                            'values' => array(
+                                [
+                                    'value' => true,
+                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                ],
+                                [
+                                    'value' => false,
+                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                ]
                             ),
                         ),
                     )
@@ -157,9 +207,15 @@ class PayTabs_PayPage extends PaymentModule
 
         $values = array_reduce(PaytabsApi::PAYMENT_TYPES, function ($acc, $method) {
             $code = $method['name'];
+
+            $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
             $acc["merchant_email_{$code}"] = Tools::getValue("merchant_email_{$code}", Configuration::get("merchant_email_{$code}"));
             $acc["merchant_secret_{$code}"] = Tools::getValue("merchant_secret_{$code}", Configuration::get("merchant_secret_{$code}"));
-            $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
+
+            $acc["hide_personal_info_{$code}"] = Tools::getValue("hide_personal_info_{$code}", Configuration::get("hide_personal_info_{$code}"));
+            $acc["hide_billing_{$code}"] = Tools::getValue("hide_billing_{$code}", Configuration::get("hide_billing_{$code}"));
+            $acc["hide_view_invoice_{$code}"] = Tools::getValue("hide_view_invoice_{$code}", Configuration::get("hide_view_invoice_{$code}"));
+
             return $acc;
         }, []);
 
@@ -194,9 +250,14 @@ class PayTabs_PayPage extends PaymentModule
         if (Tools::isSubmit('btnSubmit')) {
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
                 $code = $method['name'];
+                Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
+
                 Configuration::updateValue("merchant_email_{$code}", Tools::getValue("merchant_email_{$code}"));
                 Configuration::updateValue("merchant_secret_{$code}", Tools::getValue("merchant_secret_{$code}"));
-                Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
+
+                Configuration::updateValue("hide_personal_info_{$code}", Tools::getValue("hide_personal_info_{$code}"));
+                Configuration::updateValue("hide_billing_{$code}", Tools::getValue("hide_billing_{$code}"));
+                Configuration::updateValue("hide_view_invoice_{$code}", Tools::getValue("hide_view_invoice_{$code}"));
             }
         }
         $this->_html .= $this->displayConfirmation($this->trans('Settings updated', array(), 'Admin.Global'));
