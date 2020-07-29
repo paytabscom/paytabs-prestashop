@@ -35,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.2.0';
+        $this->version                = '2.3.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -96,7 +96,7 @@ class PayTabs_PayPage extends PaymentModule
 
         $forms = array_map(function ($method) {
             $code = $method['name'];
-            return array(
+            $form = array(
                 'form' => array(
                     'legend' => array(
                         'title' => ($method['title']),
@@ -187,6 +187,17 @@ class PayTabs_PayPage extends PaymentModule
                     )
                 ),
             );
+
+            if ($code === 'valu') {
+                $form['form']['input'][] = array(
+                    'type' => 'text',
+                    'label' => ('valU product ID'),
+                    'name' => 'valu_product_id_' . $code,
+                    'required' => true
+                );
+            }
+
+            return $form;
         }, PaytabsApi::PAYMENT_TYPES);
 
         // Submit button for all Sections
@@ -216,6 +227,10 @@ class PayTabs_PayPage extends PaymentModule
             $acc["hide_billing_{$code}"] = Tools::getValue("hide_billing_{$code}", Configuration::get("hide_billing_{$code}"));
             $acc["hide_view_invoice_{$code}"] = Tools::getValue("hide_view_invoice_{$code}", Configuration::get("hide_view_invoice_{$code}"));
 
+            if ($code === 'valu') {
+                $acc["valu_product_id_{$code}"] = Tools::getValue("valu_product_id_{$code}", Configuration::get("valu_product_id_{$code}"));
+            }
+
             return $acc;
         }, []);
 
@@ -241,6 +256,10 @@ class PayTabs_PayPage extends PaymentModule
                 if (!Tools::getValue("merchant_secret_{$code}")) {
                     $this->_postErrors[] = "{$method['title']}: Merchant Secret Key is required.";
                 }
+
+                if ($code === 'valu' && !Tools::getValue("valu_product_id_{$code}")) {
+                    $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
+                }
             }
         }
     }
@@ -258,6 +277,10 @@ class PayTabs_PayPage extends PaymentModule
                 Configuration::updateValue("hide_personal_info_{$code}", Tools::getValue("hide_personal_info_{$code}"));
                 Configuration::updateValue("hide_billing_{$code}", Tools::getValue("hide_billing_{$code}"));
                 Configuration::updateValue("hide_view_invoice_{$code}", Tools::getValue("hide_view_invoice_{$code}"));
+
+                if ($code === 'valu') {
+                    Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
+                }
             }
         }
         $this->_html .= $this->displayConfirmation($this->trans('Settings updated', array(), 'Admin.Global'));

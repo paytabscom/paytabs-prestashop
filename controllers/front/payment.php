@@ -78,6 +78,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $total_shipping = $totals['total_shipping'];
     $total_tax = $totals['total_tax'];
 
+    $total_amount = $amount + $total_discount;
 
     $products = $cart->getProducts();
 
@@ -127,7 +128,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       )
       ->set04Payment(
         strtoupper($currency->iso_code),
-        $amount + $total_discount,
+        $total_amount,
         $total_shipping + $total_tax,
         $total_discount
       )
@@ -163,6 +164,11 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set10URLs($siteUrl, $return_url)
       ->set11CMSVersion('Prestashop ' . _PS_VERSION_)
       ->set12IPCustomer($ip_customer);
+
+    if ($this->paymentType === 'valu') {
+      $valu_product_id = $this->getConfig('valu_product_id');
+      $pt_holder->set20ValuParams($valu_product_id, $total_amount);
+    }
 
     $post_arr = $pt_holder->pt_build(true);
 
