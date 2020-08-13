@@ -35,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.2.1.1';
+        $this->version                = '2.2.3.1';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -96,25 +96,13 @@ class PayTabs_PayPage extends PaymentModule
 
         $forms = array_map(function ($method) {
             $code = $method['name'];
-            return array(
+            $form = array(
                 'form' => array(
                     'legend' => array(
                         'title' => ($method['title']),
                         'icon' => 'icon-key'
                     ),
                     'input' => array(
-                        array(
-                            'type' => 'text',
-                            'label' => ('Profile ID'),
-                            'name' => 'profile_id_' . $code,
-                            'required' => true
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => ('Server Key'),
-                            'name' => 'server_key_' . $code,
-                            'required' => true
-                        ),
                         array(
                             'type' => 'switch',
                             'label' => 'Enabled',
@@ -134,9 +122,48 @@ class PayTabs_PayPage extends PaymentModule
                                 )
                             ),
                         ),
+                        array(
+                            'type' => 'text',
+                            'label' => ('Profile ID'),
+                            'name' => 'profile_id_' . $code,
+                            'required' => true
+                        ),
+                        array(
+                            'type' => 'text',
+                            'label' => ('Server Key'),
+                            'name' => 'server_key_' . $code,
+                            'required' => true
+                        ),
+                        array(
+                            'type' => 'switch',
+                            'label' => 'Hide Shipping info',
+                            'name' => 'hide_shipping_' . $code,
+                            'is_bool' => true,
+                            'values' => array(
+                                [
+                                    'value' => true,
+                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                ],
+                                [
+                                    'value' => false,
+                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                ]
+                            ),
+                        ),
                     )
                 ),
             );
+
+            if ($code === 'valu') {
+                $form['form']['input'][] = array(
+                    'type' => 'text',
+                    'label' => ('valU product ID'),
+                    'name' => 'valu_product_id_' . $code,
+                    'required' => true
+                );
+            }
+
+            return $form;
         }, PaytabsApi::PAYMENT_TYPES);
 
         // Submit button for all Sections
@@ -157,9 +184,17 @@ class PayTabs_PayPage extends PaymentModule
 
         $values = array_reduce(PaytabsApi::PAYMENT_TYPES, function ($acc, $method) {
             $code = $method['name'];
+
+            $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
             $acc["profile_id_{$code}"] = Tools::getValue("profile_id_{$code}", Configuration::get("profile_id_{$code}"));
             $acc["server_key_{$code}"] = Tools::getValue("server_key_{$code}", Configuration::get("server_key_{$code}"));
-            $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
+
+            $acc["hide_shipping_{$code}"] = Tools::getValue("hide_shipping_{$code}", Configuration::get("hide_shipping_{$code}"));
+
+            if ($code === 'valu') {
+                $acc["valu_product_id_{$code}"] = Tools::getValue("valu_product_id_{$code}", Configuration::get("valu_product_id_{$code}"));
+            }
+
             return $acc;
         }, []);
 
@@ -185,6 +220,10 @@ class PayTabs_PayPage extends PaymentModule
                 if (!Tools::getValue("server_key_{$code}")) {
                     $this->_postErrors[] = "{$method['title']}: Server Key is required.";
                 }
+
+                if ($code === 'valu' && !Tools::getValue("valu_product_id_{$code}")) {
+                    $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
+                }
             }
         }
     }
@@ -194,9 +233,16 @@ class PayTabs_PayPage extends PaymentModule
         if (Tools::isSubmit('btnSubmit')) {
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
                 $code = $method['name'];
+                Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
+
                 Configuration::updateValue("profile_id_{$code}", Tools::getValue("profile_id_{$code}"));
                 Configuration::updateValue("server_key_{$code}", Tools::getValue("server_key_{$code}"));
-                Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
+
+                Configuration::updateValue("hide_shipping_{$code}", Tools::getValue("hide_shipping_{$code}"));
+
+                if ($code === 'valu') {
+                    Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
+                }
             }
         }
         $this->_html .= $this->displayConfirmation($this->trans('Settings updated', array(), 'Admin.Global'));

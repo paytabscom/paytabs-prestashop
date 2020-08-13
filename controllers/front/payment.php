@@ -5,6 +5,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 {
   public $ssl = true;
 
+  private $paymentType;
+
   /**
    * Order submitted, redirect to PayTabs
    */
@@ -13,12 +15,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     parent::initContent();
 
     $paymentKey = Tools::getValue('method');
-    $paymentType = PaytabsHelper::paymentType($paymentKey);
+    $this->paymentType = PaytabsHelper::paymentType($paymentKey);
 
-    $profile_id = Configuration::get("profile_id_{$paymentType}");
-    $server_key = Configuration::get("server_key_{$paymentType}");
+    $merchant_id = $this->getConfig('profile_id');
+    $merchant_key = $this->getConfig('server_key');
 
-    $paytabsApi = PaytabsApi::getInstance($profile_id, $server_key);
+    $paytabsApi = PaytabsApi::getInstance($merchant_id, $merchant_key);
 
     //
 
@@ -36,7 +38,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     //
 
     if ($paypage->success) {
-      $payment_url = $paypage->redirect_url;
+      $payment_url = $paypage->payment_url;
       header("location: $payment_url");
     } else {
       $this->warning[] = $this->l($paypage->message);
@@ -49,7 +51,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
   function prepare_order($cart, $paymentKey)
   {
-    $paymentType = PaytabsHelper::paymentType($paymentKey);
+    $hide_shipping = (bool) $this->getConfig('hide_shipping');
 
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
@@ -70,11 +72,11 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $totals = $cart->getSummaryDetails();
     $amount = $totals['total_price']; // number_format($cart->getOrderTotal(true, Cart::BOTH), 2, '.', '');
 
-    $total_discount = $totals['total_discounts']; // $total_product_ammout + $cart->getOrderTotal(true, Cart::ONLY_SHIPPING) - $amount;
+    // $total_discount = $totals['total_discounts']; // $total_product_ammout + $cart->getOrderTotal(true, Cart::ONLY_SHIPPING) - $amount;
     // $total_shipping = $totals['total_shipping'];
     // $total_tax = $totals['total_tax'];
 
-    $amount += $total_discount;
+    // $amount += $total_discount;
 
 
     $products = $cart->getProducts();
@@ -90,6 +92,9 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     //
 
     $lang_ = $this->context->language->iso_code;
+    // if ($this->context->language->iso_code == "ar") {
+    //   $lang_  = "Arabic";
+    // }
 
     // $siteUrl = Context::getContext()->shop->getBaseURL(true);
     $return_url = Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['p' => $paymentKey]);
@@ -100,7 +105,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $phone_number = PaytabsHelper::getNonEmpty(
       $address_invoice->phone,
-      $address_invoice->phone_mobile
+      $address_invoice->phone_mobile,
+      '111111'
     );
 
     $shipping_phone_number = PaytabsHelper::getNonEmpty(
@@ -154,12 +160,19 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         $address_shipping->postcode,
         null
       )
-      ->set06HideShipping(false)
+      ->set06HideShipping($hide_shipping)
       ->set07URLs($return_url, null)
       ->set08Lang($lang_);
 
     $post_arr = $pt_holder->pt_build();
 
     return $post_arr;
+  }
+
+  //
+
+  private function getConfig($key)
+  {
+    return Configuration::get("{$key}_{$this->paymentType}");
   }
 }

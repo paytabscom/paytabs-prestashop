@@ -18,27 +18,34 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         }
 
         $paymentType = PaytabsHelper::paymentType($paymentKey);
-        $profile_id = Configuration::get("profile_id_{$paymentType}");
-        $server_key = Configuration::get("server_key_{$paymentType}");
+        $merchant_id = Configuration::get("profile_id_{$paymentType}");
+        $merchant_key = Configuration::get("server_key_{$paymentType}");
 
-        $paytabsApi = PaytabsApi::getInstance($profile_id, $server_key);
+        $paytabsApi = PaytabsApi::getInstance($merchant_id, $merchant_key);
+
+        //
 
         $result = $paytabsApi->verify_payment($paymentRef);
 
-        $response = $result->success;
-        if (!$response) {
+        $success = $result->success;
+        $message = $result->message;
+        $orderId = @$result->reference_no;
+        $transaction_ref = @$result->transaction_id;
+        $amountPaid = $result->cart_amount;
+
+        if (!$success) {
             $logMsg = json_encode($result);
             PrestaShopLogger::addLog(
                 "PayTabs - PagePage: payment failed, payment_ref = {$paymentRef}, response: [{$logMsg}]",
                 3,
                 null,
                 'Cart',
-                $result->cart_id,
+                $orderId,
                 true,
                 null
             );
 
-            $this->warning[] = $this->l($result->message);
+            $this->warning[] = $this->l($message);
             $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
                 'step' => '3'
             ]));
@@ -48,8 +55,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Get cart id from response
          */
-        $cartId = $result->cart_id;
-        $cart = new Cart((int) $cartId);
+        $cart = new Cart((int) $orderId);
         $authorized = false;
 
         /**
@@ -90,14 +96,14 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Place the order
          */
-        $amountPaid = $result->cart_amount;
+
         $this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
             (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
-            $result->message, // message
-            null, // extra vars
+            $message, // message
+            ['transaction_id' => $transaction_ref], // extra vars
             (int) $cart->id_currency,
             false,
             $customer->secure_key
