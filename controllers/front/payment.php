@@ -17,10 +17,10 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $paymentKey = Tools::getValue('method');
     $this->paymentType = PaytabsHelper::paymentType($paymentKey);
 
-    $merchant_email = $this->getConfig('merchant_email');
-    $merchant_secretKey = $this->getConfig('merchant_secret');
+    $merchant_id = $this->getConfig('merchant_email');
+    $merchant_key = $this->getConfig('merchant_secret');
 
-    $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
+    $paytabsApi = PaytabsApi::getInstance($merchant_id, $merchant_key);
 
     //
 

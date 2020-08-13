@@ -15,19 +15,39 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
 
         //
 
-        $paymentType = PaytabsHelper::paymentType($paymentKey);
-        $merchant_email = Configuration::get("merchant_email_{$paymentType}");
-        $merchant_secretKey = Configuration::get("merchant_secret_{$paymentType}");
+        /**
+         * Verify if this payment module is authorized
+         */
+        $authorized = false;
+        foreach (Module::getPaymentModules() as $module) {
+            if ($module['name'] == 'paytabs_paypage') {
+                $authorized = true;
+                break;
+            }
+        }
 
-        $paytabsApi = PaytabsApi::getInstance($merchant_email, $merchant_secretKey);
+        if (!$authorized) {
+            die($this->l('This payment method is not available.'));
+        }
+
+
+        //
+
+        $paymentType = PaytabsHelper::paymentType($paymentKey);
+        $merchant_id = Configuration::get("merchant_email_{$paymentType}");
+        $merchant_key = Configuration::get("merchant_secret_{$paymentType}");
+
+        $paytabsApi = PaytabsApi::getInstance($merchant_id, $merchant_key);
 
         //
 
         $result = $paytabsApi->verify_payment($paymentRef);
 
         $success = $result->success;
-        $message = $result->result;
-        $cartId = PaytabsHelper::getNonEmpty($result->reference_no, 0);
+        $message = $result->message;
+        $orderId = @$result->reference_no;
+        $transaction_ref = @$result->transaction_id;
+        $amountPaid = $result->amount;
 
         if (!$success) {
             $logMsg = json_encode($result);
@@ -36,7 +56,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
                 3,
                 null,
                 'Cart',
-                $cartId,
+                $orderId,
                 true,
                 null
             );
@@ -51,8 +71,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Get cart id from response
          */
-        $cart = new Cart((int) $cartId);
-        $authorized = false;
+        $cart = new Cart((int) $orderId);
 
         /**
          * Verify if this module is enabled and if the cart has
@@ -63,20 +82,6 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             || $cart->id_address_invoice == 0
         ) {
             Tools::redirect('index.php?controller=order&step=1');
-        }
-
-        /**
-         * Verify if this payment module is authorized
-         */
-        foreach (Module::getPaymentModules() as $module) {
-            if ($module['name'] == 'paytabs_paypage') {
-                $authorized = true;
-                break;
-            }
-        }
-
-        if (!$authorized) {
-            die($this->l('This payment method is not available.'));
         }
 
         /** @var CustomerCore $customer */
@@ -92,14 +97,14 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Place the order
          */
-        $amountPaid = $result->amount;
+
         $this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
             (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
             $message, // message
-            null, // extra vars
+            ['transaction_id' => $transaction_ref], // extra vars
             (int) $cart->id_currency,
             false,
             $customer->secure_key
