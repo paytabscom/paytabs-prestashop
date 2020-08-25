@@ -2,7 +2,7 @@
 
 /**
  * PayTabs PHP SDK
- * Version: 1.2.1
+ * Version: 1.2.2
  */
 
 
@@ -798,11 +798,11 @@ class PaytabsHolder
 
         $sums += $other_charges;
 
-        $diff = $amount - $sums;
+        $diff = round($amount - $sums, 2);
         if ($diff != 0) {
             $_logParams = json_encode($pay);
 
-            if (abs($diff) > self::THRESHOLD) {
+            if (self::THRESHOLD >= 0 && abs($diff) > self::THRESHOLD) {
                 PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]", 3);
             } else {
                 PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]", 2);
