@@ -13,23 +13,6 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             return;
         }
 
-        //
-
-        /**
-         * Verify if this payment module is authorized
-         */
-        $authorized = false;
-        foreach (Module::getPaymentModules() as $module) {
-            if ($module['name'] == 'paytabs_paypage') {
-                $authorized = true;
-                break;
-            }
-        }
-
-        if (!$authorized) {
-            die($this->l('This payment method is not available.'));
-        }
-
 
         //
 
@@ -82,6 +65,22 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             || $cart->id_address_invoice == 0
         ) {
             Tools::redirect('index.php?controller=order&step=1');
+        }
+
+
+        /**
+         * Verify if this payment module is authorized
+         */
+        $authorized = false;
+        foreach (Module::getPaymentModules() as $module) {
+            if ($module['name'] == $this->module->name) {
+                $authorized = true;
+                break;
+            }
+        }
+
+        if (!$authorized) {
+            die($this->l('This payment method is not available.'));
         }
 
         /** @var CustomerCore $customer */

@@ -35,7 +35,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.3.1';
+        $this->version                = '2.3.2';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -377,6 +377,8 @@ class PayTabs_PayPage extends PaymentModule
             return false;
         }
 
-        return $this->fetch("module:{$this->name}/views/templates/hook/payment_return.tpl");
+        $view = $this->fetch("module:{$this->name}/views/templates/hook/payment_return.tpl");
+
+        return $view;
     }
 }
