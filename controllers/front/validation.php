@@ -56,7 +56,6 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
          * Get cart id from response
          */
         $cart = new Cart((int) $orderId);
-        $authorized = false;
 
         /**
          * Verify if this module is enabled and if the cart has
@@ -72,8 +71,9 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Verify if this payment module is authorized
          */
+        $authorized = false;
         foreach (Module::getPaymentModules() as $module) {
-            if ($module['name'] == 'paytabs_paypage') {
+            if ($module['name'] == $this->module->name) {
                 $authorized = true;
                 break;
             }
