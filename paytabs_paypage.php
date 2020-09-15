@@ -12,6 +12,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
+
 require_once __DIR__ . '/paytabs_core.php';
 
 function paytabs_error_log($msg, $severity)
@@ -44,9 +46,20 @@ class PayTabs_PayPage extends PaymentModule
         $this->displayName            = 'PayTabs - PayPage';
         $this->description            = 'A simple payment gateway that can be quickly integrated with merchant websites and it enables fast deposit of payments to the merchant account. Equipped with PCI DSS certification and anti-fraud protection.';
         $this->confirmUninstall       = 'Are you sure you want to uninstall this module?';
-        $this->ps_versions_compliancy = array('min' => '1.7.0', 'max' => _PS_VERSION_);
+        $this->ps_versions_compliancy = array('min' => '1.6.0', 'max' => _PS_VERSION_);
 
         parent::__construct();
+    }
+
+
+    public function _trans($id, $params = [], $domain = null, $locale = null)
+    {
+        if (PS_VERSION_IS_NEW) {
+            return $this->trans($id, $params, $domain, $locale);
+        } else {
+            $specific = $params;
+            return $this->l($id, $specific);
+        }
     }
 
     /**
@@ -57,7 +70,7 @@ class PayTabs_PayPage extends PaymentModule
     public function install()
     {
         return parent::install()
-            && $this->registerHook('paymentOptions')
+            && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
             && $this->registerHook('paymentReturn');
     }
 
@@ -113,12 +126,12 @@ class PayTabs_PayPage extends PaymentModule
                                 array(
                                     'id' => 'active_on',
                                     'value' => true,
-                                    'label' => $this->trans('Enabled', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('Enabled', array(), 'Admin.Global'),
                                 ),
                                 array(
                                     'id' => 'active_off',
                                     'value' => false,
-                                    'label' => $this->trans('Disabled', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('Disabled', array(), 'Admin.Global'),
                                 )
                             ),
                         ),
@@ -143,12 +156,12 @@ class PayTabs_PayPage extends PaymentModule
                                 array(
                                     'id' => 'active_on',
                                     'value' => true,
-                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('Yes', array(), 'Admin.Global'),
                                 ),
                                 array(
                                     'id' => 'active_off',
                                     'value' => false,
-                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('No', array(), 'Admin.Global'),
                                 )
                             ),
                         ),
@@ -160,11 +173,11 @@ class PayTabs_PayPage extends PaymentModule
                             'values' => array(
                                 [
                                     'value' => true,
-                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('Yes', array(), 'Admin.Global'),
                                 ],
                                 [
                                     'value' => false,
-                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('No', array(), 'Admin.Global'),
                                 ]
                             ),
                         ),
@@ -176,11 +189,11 @@ class PayTabs_PayPage extends PaymentModule
                             'values' => array(
                                 [
                                     'value' => true,
-                                    'label' => $this->trans('Yes', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('Yes', array(), 'Admin.Global'),
                                 ],
                                 [
                                     'value' => false,
-                                    'label' => $this->trans('No', array(), 'Admin.Global'),
+                                    'label' => $this->_trans('No', array(), 'Admin.Global'),
                                 ]
                             ),
                         ),
@@ -208,7 +221,7 @@ class PayTabs_PayPage extends PaymentModule
                     'icon' => 'icon-gears'
                 ),
                 'submit' => array(
-                    'title' => $this->trans('Save', array(), 'Admin.Actions'),
+                    'title' => $this->_trans('Save', array(), 'Admin.Actions'),
                 )
             ]
         ];
@@ -283,7 +296,7 @@ class PayTabs_PayPage extends PaymentModule
                 }
             }
         }
-        $this->_html .= $this->displayConfirmation($this->trans('Settings updated', array(), 'Admin.Global'));
+        $this->_html .= $this->displayConfirmation($this->_trans('Settings updated', array(), 'Admin.Global'));
     }
 
 
@@ -355,6 +368,64 @@ class PayTabs_PayPage extends PaymentModule
         }
 
         return $payment_options;
+    }
+
+
+    /**
+     * PrestaShop 1.6 (Display the payment method template)
+     *
+     * @param array $params
+     * @return array|void
+     */
+    public function hookPayment($params)
+    {
+        /*
+         * Verify if this module is active
+         */
+        if (!$this->active) {
+            return;
+        }
+
+        $currency = $this->context->currency;
+
+        foreach (PaytabsApi::PAYMENT_TYPES as $index => $payment) {
+            $code = $payment['name'];
+            $title = $payment['title'];
+            $this->smarty->assign(['code' => $code]);
+
+            if (!PaytabsHelper::paymentAllowed($code, $currency->iso_code)) continue;
+            if (!Configuration::get("active_{$code}")) continue;
+
+            /**
+             * Form action URL. The form data will be sent to the
+             * validation controller when the user finishes
+             * the order process.
+             */
+            $formAction = $this->context->link->getModuleLink($this->name, 'payment', ['method' => $index], true);
+
+            $newOption = []; // new PrestaShop\PrestaShop\Core\Payment\PaymentOption;
+            $newOption = [
+                'code' => $code,
+                'title' => $title,
+                'action' => $formAction,
+                'desc' => "Pay by PayTabs using $code"
+                // ->setForm($paymentForm)
+            ];
+
+            $logo = "/icons/{$code}.png";
+            $logo_path = (__DIR__ . $logo);
+            if (file_exists($logo_path)) {
+                $logo_path = (_MODULE_DIR_ . "{$this->name}{$logo}");
+                $newOption['logo'] = $logo_path;
+            }
+
+            $payment_options[] = $newOption;
+        }
+
+        $this->smarty->assign([
+            'payment_options' => $payment_options
+        ]);
+        return $this->display(__FILE__, 'payment_option.tpl');
     }
 
 
