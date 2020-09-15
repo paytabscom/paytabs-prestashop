@@ -45,10 +45,20 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
                 null
             );
 
-            $this->warning[] = $this->l($message);
-            $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
-                'step' => '3'
-            ]));
+            $p_message = $this->module->_trans($message);;
+            $this->warning[] = $p_message;
+            $redirect_url = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
+
+            if (PS_VERSION_IS_NEW) {
+                $this->redirectWithNotifications($redirect_url);
+            } else {
+                $this->context->smarty->assign([
+                    'message'  => $p_message,
+                    'redirect' => $redirect_url
+                ]);
+                $this->setTemplate('payment_error.tpl');
+            }
+
             return;
         }
 
@@ -80,14 +90,14 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         }
 
         if (!$authorized) {
-            die($this->l('This payment method is not available.'));
+            die($this->module->_trans('This payment method is not available.'));
         }
 
         /** @var CustomerCore $customer */
         $customer = new Customer($cart->id_customer);
 
         /**
-         * Check if this is a vlaid customer account
+         * Check if this is a valid customer account
          */
         if (!Validate::isLoadedObject($customer)) {
             Tools::redirect('index.php?controller=order&step=1');
@@ -112,6 +122,10 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         /**
          * Redirect the customer to the order confirmation page
          */
-        Tools::redirect('index.php?controller=order-confirmation&id_cart=' . (int) $cart->id . '&id_module=' . (int) $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key);
+        if (PS_VERSION_IS_NEW) {
+            Tools::redirect('index.php?controller=order-confirmation&id_cart=' . (int) $cart->id . '&id_module=' . (int) $this->module->id . '&id_order=' . $this->module->currentOrder . '&key=' . $customer->secure_key);
+        } else {
+            Tools::redirect('index.php?controller=order-detail&id_order=' . $this->module->currentOrder);
+        }
     }
 }

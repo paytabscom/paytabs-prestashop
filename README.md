@@ -50,7 +50,7 @@ The official PrestaShop 1.7 plugin for PayTabs
 
 ## Access the Log
 
-1. Go to `Prestashop admin panel >> Configure >> Advanced PArameters >> Logs`
+1. Go to `Prestashop admin panel >> Configure >> Advanced Parameters >> Logs`
 2. Search for **Message**s containing `PayTabs` as this is the prefix for all PayTabs' plugin's messages
 
 - - -
