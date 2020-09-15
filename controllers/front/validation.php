@@ -49,9 +49,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             $redirect_url = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
             if (PS_VERSION_IS_NEW) {
-                $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
-                    'step' => '3'
-                ]));
+                $this->redirectWithNotifications($redirect_url);
             } else {
                 $this->context->smarty->assign([
                     'message'  => $p_message,
