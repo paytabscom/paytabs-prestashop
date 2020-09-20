@@ -32,16 +32,20 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     // Create paypage
     $paypage = $paytabsApi->create_pay_page($request_param);
 
+    $success = $paypage->success;
+    $message = $paypage->message;
+
     $_logMsg = 'PayTabs: ' . json_encode($paypage);
     PrestaShopLogger::addLog($_logMsg, ($paypage->success ? 1 : 3), null, 'Cart', $cart->id, true, $cart->id_customer);
 
     //
 
-    if ($paypage->success) {
+    if ($success) {
       $payment_url = $paypage->payment_url;
       header("location: $payment_url");
+      exit;
     } else {
-      $this->warning[] = $this->l($paypage->result);
+      $this->warning[] = $this->l($message);
       $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
         'step' => '3'
       ]));
@@ -167,7 +171,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     if ($this->paymentType === 'valu') {
       $valu_product_id = $this->getConfig('valu_product_id');
-      $pt_holder->set20ValuParams($valu_product_id, $total_amount);
+      $pt_holder->set20ValuParams($valu_product_id, 0);
     }
 
     $post_arr = $pt_holder->pt_build(true);
