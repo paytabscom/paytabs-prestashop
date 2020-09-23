@@ -42,13 +42,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     if ($success) {
       $payment_url = $paypage->payment_url;
-      header("location: $payment_url");
-      exit;
+      Tools::redirect($payment_url);
     } else {
-      $this->warning[] = $this->l($message);
-      $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
-        'step' => '3'
-      ]));
+      $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
+
+      $this->module->_redirectWithWarning($this->context, $url_step3, $message);
+      return;
     }
   }
 
