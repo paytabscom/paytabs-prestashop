@@ -8,12 +8,13 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         $paymentKey = Tools::getValue('p');
         $paymentRef = Tools::getValue('tranRef');
 
+        $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
+
         if (!isset($paymentRef, $paymentKey) || !$paymentRef || !$paymentKey) {
             PrestaShopLogger::addLog('PayTabs - PagePage: params error', 3, null, 'Cart', null, true, null);
-            $this->warning[] = $this->module->_trans('Payment reference is missing!');
-            $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
-                'step' => '3'
-            ]));
+
+            $this->module->_redirectWithWarning($this->context, $url_step3, 'Payment reference is missing!');
+            return;
         }
 
         $paymentType = PaytabsHelper::paymentType($paymentKey);
@@ -44,20 +45,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
                 null
             );
 
-            $p_message = $this->module->_trans($message);;
-            $this->warning[] = $p_message;
-            $redirect_url = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
-
-            if (PS_VERSION_IS_NEW) {
-                $this->redirectWithNotifications($redirect_url);
-            } else {
-                $this->context->smarty->assign([
-                    'message'  => $p_message,
-                    'redirect' => $redirect_url
-                ]);
-                $this->setTemplate('payment_error.tpl');
-            }
-
+            $this->module->_redirectWithWarning($this->context, $url_step3, $message);
             return;
         }
 
@@ -87,9 +75,9 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
                 break;
             }
         }
-
         if (!$authorized) {
-            die($this->module->_trans('This payment method is not available.'));
+            // die($this->module->_trans('This payment method is not available.'));
+            PrestaShopLogger::addLog('PayTabs - PagePage: redirecting error', 3, null, 'Cart', null, true, null);
         }
 
         /** @var CustomerCore $customer */

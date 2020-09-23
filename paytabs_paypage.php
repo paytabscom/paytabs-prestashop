@@ -52,17 +52,6 @@ class PayTabs_PayPage extends PaymentModule
     }
 
 
-    public function _trans($id, $params = [], $domain = null, $locale = null)
-    {
-        if (PS_VERSION_IS_NEW) {
-            return $this->trans($id, $params, $domain, $locale);
-        } else {
-            $specific = $params;
-            return $this->l($id, $specific);
-        }
-    }
-
-
     /**
      * Install this module and register the following Hooks:
      *
@@ -75,6 +64,7 @@ class PayTabs_PayPage extends PaymentModule
             && $this->registerHook('paymentReturn');
     }
 
+
     /**
      * Uninstall this module and remove it from all hooks
      *
@@ -84,6 +74,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         return parent::uninstall();
     }
+
 
     /**
      * Returns a string containing the HTML necessary to
@@ -221,6 +212,7 @@ class PayTabs_PayPage extends PaymentModule
         return $this->_html;
     }
 
+
     protected function _postValidation()
     {
         if (!Tools::isSubmit('btnSubmit')) return;
@@ -241,6 +233,7 @@ class PayTabs_PayPage extends PaymentModule
             }
         }
     }
+
 
     protected function _postProcess()
     {
@@ -414,5 +407,36 @@ class PayTabs_PayPage extends PaymentModule
         $view = $this->fetch("module:{$this->name}/views/templates/hook/payment_return.tpl");
 
         return $view;
+    }
+
+    //
+
+    public function _trans($id, $params = [], $domain = null, $locale = null)
+    {
+        if (PS_VERSION_IS_NEW) {
+            return $this->trans($id, $params, $domain, $locale);
+        } else {
+            $specific = $params;
+            return $this->l($id, $specific);
+        }
+    }
+
+
+    public function _redirectWithWarning($context, $url, $message)
+    {
+        $controller = $context->controller;
+
+        $p_message = $this->_trans($message);
+        $controller->warning[] = $p_message;
+
+        if (PS_VERSION_IS_NEW) {
+            $controller->redirectWithNotifications($url);
+        } else {
+            $context->smarty->assign([
+                'message'  => $p_message,
+                'redirect' => $url
+            ]);
+            $controller->setTemplate('payment_error.tpl');
+        }
     }
 }
