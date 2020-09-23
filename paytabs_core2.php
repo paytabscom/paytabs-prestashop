@@ -2,7 +2,7 @@
 
 /**
  * PayTabs 2 PHP SDK
- * Version: 1.1.0
+ * Version: 1.1.1
  */
 
 
@@ -136,9 +136,8 @@ class PaytabsHelper
     static function getTokenInfo($return_values)
     {
         $fields = [
-            'pt_token',
-            'pt_customer_email',
-            'pt_customer_password'
+            'token',
+            'tran_ref',
         ];
 
         $tokenInfo = [];
@@ -1104,6 +1103,9 @@ class PaytabsApi
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
 
+            if (!isset($_paypage->message)) {
+                $_paypage->message = '';
+            }
             $_paypage->payment_url = @$paypage->redirect_url;
         }
 

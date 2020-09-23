@@ -42,10 +42,9 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     if ($success) {
       $payment_url = $paypage->payment_url;
-      header("location: $payment_url");
-      exit;
+      Tools::redirect($payment_url);
     } else {
-      $this->warning[] = $this->l($message);
+      $this->warning[] = $this->module->_trans($message);
       $this->redirectWithNotifications($this->context->link->getPageLink('order', true, null, [
         'step' => '3'
       ]));
@@ -134,7 +133,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $pt_holder = new PaytabsHolder2();
     $pt_holder
-      ->set01PaymentCode($paymentType)
+      ->set01PaymentCode($this->paymentType)
       ->set02Transaction('sale', 'ecom')
       ->set03Cart(
         $cart->id,
