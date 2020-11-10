@@ -8,7 +8,7 @@ The official PrestaShop 1.7 plugin for PayTabs
 
 ### Install using PrestaShop Admin panel
 
-1. Download the compressed version from Releases page ([2.4.2](https://github.com/paytabscom/paytabs-prestashop1.7/releases/download/2.4.2/paytabs_paypage.zip))
+1. Download the compressed version from Releases page ([2.4.3](https://github.com/paytabscom/paytabs-prestashop1.7/releases/download/2.4.3/paytabs_paypage.zip))
 2. Rename the downloaded ".zip" file to **paytabs_paypage.zip**
 3. Go to `Prestashop admin panel >> Improve >> Modules >> Module Manager`
 4. Click on `Upload a module` then select the `paytabs_paypage.zip` file
@@ -16,7 +16,7 @@ The official PrestaShop 1.7 plugin for PayTabs
 
 ### Install using FTP method
 
-1. Download the compressed version from Releases page ([2.4.2](https://github.com/paytabscom/paytabs-prestashop1.7/releases/download/2.4.2/paytabs_paypage.zip))
+1. Download the compressed version from Releases page ([2.4.3](https://github.com/paytabscom/paytabs-prestashop1.7/releases/download/2.4.3/paytabs_paypage.zip))
 2. Upload the the folder `paytabs_paypage` to Prestashop site directory: `root/modules/`
 3. Go to `Prestashop admin panel >> Improve >> Modules >> Module Catalog`
 4. Search for `PayTabs`

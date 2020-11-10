@@ -2,7 +2,7 @@
 
 /**
  * PayTabs PHP SDK
- * Version: 1.2.4
+ * Version: 1.2.6
  */
 
 
@@ -51,7 +51,7 @@ class PaytabsHelper
     public static function getNonEmpty(...$vars)
     {
         foreach ($vars as $var) {
-            if (!empty($var)) return $var;
+            if (!empty(trim($var))) return $var;
         }
         return false;
     }
@@ -721,8 +721,8 @@ class PaytabsHolder
     private $billing;
 
     /**
-     * shipping_firstname
-     * shipping_lastname
+     * shipping_first_name
+     * shipping_last_name
      * address_shipping
      * city_shipping
      * state_shipping
@@ -997,8 +997,8 @@ class PaytabsHolder
         //
 
         $this->shipping = [
-            'shipping_firstname'   => $firstname,
-            'shipping_lastname'    => $lastname,
+            'shipping_first_name'  => $firstname,
+            'shipping_last_name'   => $lastname,
             'address_shipping'     => $address,
             'city_shipping'        => $city,
             'state_shipping'       => $state,
