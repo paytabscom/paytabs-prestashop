@@ -37,7 +37,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '2.2.4.2';
+        $this->version                = '2.2.5.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -99,7 +99,15 @@ class PayTabs_PayPage extends PaymentModule
 
         //
 
-        $forms = array_map(function ($method) {
+        $endpoints = PaytabsApi::getEndpoints();
+        $endpoints = array_map(function ($key, $value) {
+            return [
+                'key' => $key,
+                'title' => $value
+            ];
+        }, array_keys($endpoints), $endpoints);
+
+        $forms = array_map(function ($method) use ($endpoints) {
             $code = $method['name'];
             $form = array(
                 'form' => array(
@@ -126,6 +134,17 @@ class PayTabs_PayPage extends PaymentModule
                                     'label' => $this->_trans('Disabled', array(), 'Admin.Global'),
                                 )
                             ),
+                        ),
+                        array(
+                            'type' => 'select',
+                            'label' => 'Endpoint region',
+                            'name' => 'endpoint_' . $code,
+                            'required' => true,
+                            'options' => [
+                                'query' => $endpoints,
+                                'id' => 'key',
+                                'name' => 'title'
+                            ],
                         ),
                         array(
                             'type' => 'text',
@@ -191,6 +210,9 @@ class PayTabs_PayPage extends PaymentModule
             $code = $method['name'];
 
             $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
+
+            $acc["endpoint_{$code}"] = Tools::getValue("endpoint_{$code}", Configuration::get("endpoint_{$code}"));
+
             $acc["profile_id_{$code}"] = Tools::getValue("profile_id_{$code}", Configuration::get("profile_id_{$code}"));
             $acc["server_key_{$code}"] = Tools::getValue("server_key_{$code}", Configuration::get("server_key_{$code}"));
 
@@ -220,6 +242,9 @@ class PayTabs_PayPage extends PaymentModule
         foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
             $code = $method['name'];
             if (Tools::getValue("active_{$code}")) {
+                if (!Tools::getValue("endpoint_{$code}")) {
+                    $this->_postErrors[] = "{$method['title']}: Endpoint is required.";
+                }
                 if (!Tools::getValue("profile_id_{$code}")) {
                     $this->_postErrors[] = "{$method['title']}: Profile ID is required.";
                 }
@@ -241,6 +266,8 @@ class PayTabs_PayPage extends PaymentModule
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
                 $code = $method['name'];
                 Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
+
+                Configuration::updateValue("endpoint_{$code}", Tools::getValue("endpoint_{$code}"));
 
                 Configuration::updateValue("profile_id_{$code}", Tools::getValue("profile_id_{$code}"));
                 Configuration::updateValue("server_key_{$code}", Tools::getValue("server_key_{$code}"));
