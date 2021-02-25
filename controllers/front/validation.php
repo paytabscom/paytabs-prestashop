@@ -18,10 +18,11 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         }
 
         $paymentType = PaytabsHelper::paymentType($paymentKey);
+        $endpoint = Configuration::get("endpoint_{$paymentType}");
         $merchant_id = Configuration::get("profile_id_{$paymentType}");
         $merchant_key = Configuration::get("server_key_{$paymentType}");
 
-        $paytabsApi = PaytabsApi::getInstance($merchant_id, $merchant_key);
+        $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 
         //
 

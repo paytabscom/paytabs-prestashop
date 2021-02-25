@@ -17,10 +17,11 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $paymentKey = Tools::getValue('method');
     $this->paymentType = PaytabsHelper::paymentType($paymentKey);
 
+    $endpoint = $this->getConfig('endpoint');
     $merchant_id = $this->getConfig('profile_id');
     $merchant_key = $this->getConfig('server_key');
 
-    $paytabsApi = PaytabsApi::getInstance($merchant_id, $merchant_key);
+    $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 
     //
 
