@@ -154,6 +154,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         $ip_customer
       )
       ->set05ShippingDetails(
+        false,
         $address_shipping->firstname . ' ' . $address_shipping->lastname,
         $customer->email,
         $shipping_phone_number,
