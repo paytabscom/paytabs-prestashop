@@ -86,12 +86,13 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $products = $cart->getProducts();
 
     $items_arr = array_map(function ($p) {
-      return [
-        'name' => $p['name'],
-        'quantity' => $p['cart_quantity'],
-        'price' => $p['price']
-      ];
+      $name = $p['name'];
+      $qty = $p['quantity'];
+      $qty_str = $qty > 1 ? "({$qty})" : '';
+      return "{$name} $qty_str";
     }, $products);
+
+    $cart_desc = implode(', ', $items_arr);
 
     //
 
@@ -109,8 +110,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $phone_number = PaytabsHelper::getNonEmpty(
       $address_invoice->phone,
-      $address_invoice->phone_mobile,
-      '111111'
+      $address_invoice->phone_mobile
     );
 
     $shipping_phone_number = PaytabsHelper::getNonEmpty(
@@ -132,15 +132,15 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $ip_customer = Tools::getRemoteAddr();
 
-    $pt_holder = new PaytabsHolder2();
+    $pt_holder = new PaytabsRequestHolder();
     $pt_holder
       ->set01PaymentCode($this->paymentType)
-      ->set02Transaction('sale', 'ecom')
+      ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
       ->set03Cart(
         $cart->id,
         strtoupper($currency->iso_code),
         $amount,
-        json_encode($items_arr)
+        $cart_desc
       )
       ->set04CustomerDetails(
         $address_invoice->firstname . ' ' . $address_invoice->lastname,
@@ -149,7 +149,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         $address_invoice->address1 . ' ' . $address_invoice->address2,
         $address_invoice->city,
         $invoice_state,
-        PaytabsHelper::countryGetiso3($invoice_country->iso_code),
+        $invoice_country->iso_code,
         $address_invoice->postcode,
         $ip_customer
       )
@@ -161,13 +161,14 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         $address_shipping->address1 . ' ' . $address_shipping->address2,
         $address_shipping->city,
         $shipping_state,
-        PaytabsHelper::countryGetiso3($shipping_country->iso_code),
+        $shipping_country->iso_code,
         $address_shipping->postcode,
         null
       )
       ->set06HideShipping($hide_shipping)
       ->set07URLs($return_url, null)
-      ->set08Lang($lang_);
+      ->set08Lang($lang_)
+      ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
     $post_arr = $pt_holder->pt_build();
 

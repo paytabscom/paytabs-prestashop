@@ -10,7 +10,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
 
         $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
-        if (!isset($paymentRef, $paymentKey) || !$paymentRef || !$paymentKey) {
+        if (!$paymentRef || $paymentKey === false) {
             PrestaShopLogger::addLog('PayTabs - PagePage: params error', 3, null, 'Cart', null, true, null);
 
             $this->module->_redirectWithWarning($this->context, $url_step3, 'Payment reference is missing!');
