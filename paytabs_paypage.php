@@ -13,6 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
+define('PAYTABS_PAYPAGE_VERSION', '3.1.0');
 
 require_once __DIR__ . '/paytabs_core2.php';
 
@@ -37,7 +38,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '3.0.0';
+        $this->version                = '3.1.0';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -331,12 +332,19 @@ class PayTabs_PayPage extends PaymentModule
              */
             $formAction = $this->context->link->getModuleLink($this->name, 'payment', ['method' => $index], true);
 
+            if ($code == 'all') {
+                $title = 'Online payments powered by PayTabs';
+                $desc = 'Online payments powered by PayTabs';
+            } else {
+                $desc = "Pay by PayTabs using $code";
+            }
+
             $newOption = new PrestaShop\PrestaShop\Core\Payment\PaymentOption;
             $newOption
                 ->setModuleName($code)
                 ->setCallToActionText($title)
                 ->setAction($formAction)
-                ->setAdditionalInformation("Pay by PayTabs using $code")
+                ->setAdditionalInformation($desc)
                 // ->setForm($paymentForm)
             ;
 
@@ -389,16 +397,26 @@ class PayTabs_PayPage extends PaymentModule
              */
             $formAction = $this->context->link->getModuleLink($this->name, 'payment', ['method' => $index], true);
 
+            if ($code == 'all') {
+                $title = 'Online payments powered by PayTabs';
+                $desc = 'Online payments powered by PayTabs';
+            } else {
+                $desc = "Pay by PayTabs using $code";
+            }
+
             $newOption = []; // new PrestaShop\PrestaShop\Core\Payment\PaymentOption;
             $newOption = [
                 'code' => $code,
                 'title' => $title,
                 'action' => $formAction,
-                'desc' => "Pay by PayTabs using $code"
+                'desc' => $desc
                 // ->setForm($paymentForm)
             ];
 
-            $logo = "/icons/{$code}.png";
+            $logo = "/icons/{$code}";
+            if ($code == 'creditcard') $logo .= '.svg';
+            else $logo .= '.png';
+
             $logo_path = (__DIR__ . $logo);
             if (file_exists($logo_path)) {
                 $logo_path = (_MODULE_DIR_ . "{$this->name}{$logo}");
