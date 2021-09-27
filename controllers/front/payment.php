@@ -134,7 +134,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $pt_holder = new PaytabsRequestHolder();
     $pt_holder
-      ->set01PaymentCode($this->paymentType)
+      ->set01PaymentCode($this->paymentType, false)
       ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
       ->set03Cart(
         $cart->id,
