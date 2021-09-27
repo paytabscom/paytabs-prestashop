@@ -1,7 +1,7 @@
 <?php
 
 /**
- * PayTabs - A 3rd party Payment Module for PrestaShop 1.7
+ * PayTabs - A 3rd party Payment Module for PrestaShop 1.6 & 1.7
  *
  * This file is the declaration of the module.
  *
@@ -13,7 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.1.1');
+define('PAYTABS_PAYPAGE_VERSION', '3.1.2');
 
 require_once __DIR__ . '/paytabs_core.php';
 
@@ -38,7 +38,7 @@ class PayTabs_PayPage extends PaymentModule
     {
         $this->name                   = 'paytabs_paypage';
         $this->tab                    = 'payments_gateways';
-        $this->version                = '3.1.1';
+        $this->version                = '3.1.2';
         $this->author                 = 'PayTabs';
         $this->controllers            = array('payment', 'validation');
         $this->currencies             = true;
@@ -188,6 +188,25 @@ class PayTabs_PayPage extends PaymentModule
                 );
             }
 
+            if (PaytabsHelper::isCardPayment($code)) {
+                $form['form']['input'][] = array(
+                    'type'  => 'switch',
+                    'label' => 'Allow associated methods',
+                    'name'  => 'allow_associated_methods_' . $code,
+                    'is_bool' => true,
+                    'values' => array(
+                        [
+                            'value' => true,
+                            'label' => $this->_trans('Yes', array(), 'Admin.Global'),
+                        ],
+                        [
+                            'value' => false,
+                            'label' => $this->_trans('No', array(), 'Admin.Global'),
+                        ]
+                    ),
+                );
+            }
+
             return $form;
         }, PaytabsApi::PAYMENT_TYPES);
 
@@ -221,6 +240,10 @@ class PayTabs_PayPage extends PaymentModule
 
             if ($code === 'valu') {
                 $acc["valu_product_id_{$code}"] = Tools::getValue("valu_product_id_{$code}", Configuration::get("valu_product_id_{$code}"));
+            }
+
+            if (PaytabsHelper::isCardPayment($code)) {
+                $acc["allow_associated_methods_{$code}"] = Tools::getValue("allow_associated_methods_{$code}", Configuration::get("allow_associated_methods_{$code}"));
             }
 
             return $acc;
@@ -277,6 +300,10 @@ class PayTabs_PayPage extends PaymentModule
 
                 if ($code === 'valu') {
                     Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
+                }
+
+                if (PaytabsHelper::isCardPayment($code)) {
+                    Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
                 }
             }
         }

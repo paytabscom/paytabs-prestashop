@@ -56,6 +56,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
   function prepare_order($cart, $paymentKey)
   {
     $hide_shipping = (bool) $this->getConfig('hide_shipping');
+    $allow_associated_methods = (bool) $this->getConfig('allow_associated_methods');
 
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
@@ -134,7 +135,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $pt_holder = new PaytabsRequestHolder();
     $pt_holder
-      ->set01PaymentCode($this->paymentType, false)
+      ->set01PaymentCode($this->paymentType, $allow_associated_methods, strtoupper($currency->iso_code))
       ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
       ->set03Cart(
         $cart->id,
