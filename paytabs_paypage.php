@@ -375,20 +375,42 @@ class PayTabs_PayPage extends PaymentModule
                 // ->setForm($paymentForm)
             ;
 
-            $logo = "/icons/{$code}";
-            if ($code == 'creditcard') $logo .= '.svg';
-            else $logo .= '.png';
-
-            $logo_path = (__DIR__ . $logo);
-            if (file_exists($logo_path)) {
-                $logo_path = (_MODULE_DIR_ . "{$this->name}{$logo}");
-                $newOption->setLogo($logo_path);
+            $logo = $this->get_icon($code);
+            if ($logo) {
+                $newOption->setLogo($logo);
             }
 
             $payment_options[] = $newOption;
         }
 
         return $payment_options;
+    }
+
+
+    private function get_icon($code)
+    {
+        $logo = "/icons/{$code}";
+
+        $logo_svg = '.svg';
+        $logo_png = '.png';
+
+        $logo_path_svg = (__DIR__ . $logo . $logo_svg);
+        $logo_path_png = (__DIR__ . $logo . $logo_png);
+
+        $logo_ext = null;
+
+        if (file_exists($logo_path_svg)) {
+            $logo_ext = $logo_svg;
+        } else if (file_exists($logo_path_png)) {
+            $logo_ext = $logo_png;
+        }
+
+        if ($logo_ext) {
+            $logo_path = (_MODULE_DIR_ . "{$this->name}{$logo}{$logo_ext}");
+            return $logo_path;
+        }
+
+        return null;
     }
 
 
