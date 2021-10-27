@@ -43,7 +43,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     if ($success) {
       $payment_url = $paypage->payment_url;
-      Tools::redirect($payment_url);
+      // return Tools::redirect($payment_url);
+
+      $this->context->smarty->assign([
+        'payment_url' => $payment_url,
+      ]);
+      $this->setTemplate('payment_confirm.tpl');
     } else {
       $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
