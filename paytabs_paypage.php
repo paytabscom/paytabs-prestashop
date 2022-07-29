@@ -482,18 +482,19 @@ class PayTabs_PayPage extends PaymentModule
                 // ->setForm($paymentForm)
             ];
 
-            $logo = "/icons/{$code}";
-            if ($code == 'creditcard') $logo .= '.svg';
-            else $logo .= '.png';
-
-            $logo_path = (__DIR__ . $logo);
-            if (file_exists($logo_path)) {
-                $logo_path = (_MODULE_DIR_ . "{$this->name}{$logo}");
-                $newOption['logo'] = $logo_path;
+            $logo = $this->_get_icon($code);
+            if ($logo) {
+                $newOption['logo'] = $logo;
             }
+
+            $newOption['sort'] = (int)Configuration::get("sort_{$code}");
 
             $payment_options[] = $newOption;
         }
+
+        uasort($payment_options, function ($a, $b) {
+            return $a['sort'] > $b['sort'];
+        });
 
         $this->smarty->assign([
             'payment_options' => $payment_options
