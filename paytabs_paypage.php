@@ -389,7 +389,7 @@ class PayTabs_PayPage extends PaymentModule
                 // ->setForm($paymentForm)
             ;
 
-            $logo = $this->get_icon($code);
+            $logo = $this->_get_icon($code);
             if ($logo) {
                 $newOption->setLogo($logo);
             }
@@ -407,7 +407,7 @@ class PayTabs_PayPage extends PaymentModule
     }
 
 
-    private function get_icon($code)
+    private function _get_icon($code)
     {
         $logo = "/icons/{$code}";
 
