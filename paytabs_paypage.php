@@ -175,6 +175,11 @@ class PayTabs_PayPage extends PaymentModule
                                 ]
                             ),
                         ),
+                        array(
+                            'type' => 'text',
+                            'label' => 'Order in Checkout page',
+                            'name' => 'sort_' . $code
+                        ),
                     )
                 ),
             );
@@ -226,7 +231,8 @@ class PayTabs_PayPage extends PaymentModule
         $helper = new HelperForm();
         $helper->submit_action = 'btnSubmit';
 
-        $values = array_reduce(PaytabsApi::PAYMENT_TYPES, function ($acc, $method) {
+        $i = 2;
+        $values = array_reduce(PaytabsApi::PAYMENT_TYPES, function ($acc, $method) use (&$i) {
             $code = $method['name'];
 
             $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
@@ -237,6 +243,12 @@ class PayTabs_PayPage extends PaymentModule
             $acc["server_key_{$code}"] = Tools::getValue("server_key_{$code}", Configuration::get("server_key_{$code}"));
 
             $acc["hide_shipping_{$code}"] = Tools::getValue("hide_shipping_{$code}", Configuration::get("hide_shipping_{$code}"));
+
+            $sort = (int)Tools::getValue("sort_{$code}", Configuration::get("sort_{$code}"));
+            if (!$sort) {
+                $sort = ($code == 'mada') ? 1 : $i++;
+            }
+            $acc["sort_{$code}"] = $sort;
 
             if ($code === 'valu') {
                 $acc["valu_product_id_{$code}"] = Tools::getValue("valu_product_id_{$code}", Configuration::get("valu_product_id_{$code}"));
@@ -297,6 +309,8 @@ class PayTabs_PayPage extends PaymentModule
                 Configuration::updateValue("server_key_{$code}", Tools::getValue("server_key_{$code}"));
 
                 Configuration::updateValue("hide_shipping_{$code}", Tools::getValue("hide_shipping_{$code}"));
+
+                Configuration::updateValue("sort_{$code}", (int)Tools::getValue("sort_{$code}"));
 
                 if ($code === 'valu') {
                     Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
@@ -380,8 +394,14 @@ class PayTabs_PayPage extends PaymentModule
                 $newOption->setLogo($logo);
             }
 
+            $newOption->sort = (int)Configuration::get("sort_{$code}");
+
             $payment_options[] = $newOption;
         }
+
+        uasort($payment_options, function ($a, $b) {
+            return $a->sort > $b->sort;
+        });
 
         return $payment_options;
     }
