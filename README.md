@@ -1,30 +1,32 @@
 # PayTabs Prestashop
 
 The official PrestaShop plugin for PayTabs
-Supports PrestaShop 1.6 & 1.7
+Supports PrestaShop **1.6** & **1.7**
 
-- - -
+---
 
 ## Installation
 
+Download the compressed version from Releases page ([3.2.0](https://github.com/paytabscom/paytabs-prestashop/releases/download/3.2.0/paytabs_paypage.zip))
+
+*Then use of of the following 2 mehods:*
+
 ### Install using PrestaShop Admin panel
 
-1. Download the compressed version from Releases page ([3.1.3](https://github.com/paytabscom/paytabs-prestashop/releases/download/3.1.3/paytabs_paypage.zip))
-2. Rename the downloaded ".zip" file to **paytabs_paypage.zip**
-3. Go to `Prestashop admin panel >> Improve >> Modules >> Module Manager`
-4. Click on `Upload a module` then select the `paytabs_paypage.zip` file
-5. Wait until the installing completes
+1. Rename the downloaded ".zip" file to **paytabs_paypage.zip**
+2. Go to `Prestashop admin panel >> Improve >> Modules >> Module Manager`
+3. Click on `Upload a module` then select the `paytabs_paypage.zip` file
+4. Wait until the installing completes
 
 ### Install using FTP method
 
-1. Download the compressed version from Releases page ([3.1.3](https://github.com/paytabscom/paytabs-prestashop/releases/download/3.1.3/paytabs_paypage.zip))
-2. Decompress `paytabs_paypage.zip`, Then rename the folder to `paytabs_paypage`
-3. Upload the folder `paytabs_paypage` to Prestashop site directory: `root/modules/`
-4. Go to `Prestashop admin panel >> Improve >> Modules >> Module Catalog`
-5. Search for `PayTabs`
-6. Click on `Install`
+1. Decompress `paytabs_paypage.zip`, Then rename the folder to `paytabs_paypage`
+2. Upload the folder `paytabs_paypage` to Prestashop site directory: `root/modules/`
+3. Go to `Prestashop admin panel >> Improve >> Modules >> Module Catalog`
+4. Search for `PayTabs`
+5. Click on `Install`
 
-- - -
+---
 
 ## Activating/DeActivating the Plugin
 
@@ -33,7 +35,7 @@ Supports PrestaShop 1.6 & 1.7
 3. Click the `Enable` button in case the module disabled
 4. From the drop down menu, Select `Disable` to disable the module
 
-- - -
+---
 
 ## Configure the Plugin
 
@@ -47,13 +49,13 @@ Supports PrestaShop 1.6 & 1.7
 6. Configure other options as your need
 7. Click `Save` button *(located on bottom-right corner)*
 
-- - -
+---
 
 ## Access the Log
 
 1. Go to `Prestashop admin panel >> Configure >> Advanced Parameters >> Logs`
 2. Search for **Message**s containing `PayTabs` as this is the prefix for all PayTabs' plugin's messages
 
-- - -
+---
 
 Done
