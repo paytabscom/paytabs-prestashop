@@ -6,7 +6,7 @@
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.9.0');
+define('PAYTABS_SDK_VERSION', '2.10.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -299,7 +299,6 @@ abstract class PaytabsEnum
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REFUND) == 0;
     }
-
 
     static function TransAreSame($tran_type1, $tran_type2)
     {
@@ -991,7 +990,7 @@ class PaytabsApi
         ],
         // 'DEMO' => [
         //     'title' => 'Demo',
-        //     'endpoint' => 'https://secure-demo.paytabs.com/'
+        //     'endpoint' => 'https://paypage.paytabs.com/'
         // ],
     ];
 
