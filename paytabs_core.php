@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.9.0
+ * Version: 2.10.0
  * PHP >= 7.0.0
  */
 
