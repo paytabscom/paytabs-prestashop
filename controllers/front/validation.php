@@ -11,7 +11,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
         if (!$paymentRef || $paymentKey === false) {
-            PrestaShopLogger::addLog('PayTabs - PagePage: params error', 3, null, 'Cart', null, true, null);
+            PrestaShopLogger::addLog('PayTabs: params error', 3, null, 'Cart', null, true, null);
 
             $this->module->_redirectWithWarning($this->context, $url_step3, 'Payment reference is missing!');
             return;
@@ -26,18 +26,21 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
 
         //
 
-        $result = $paytabsApi->verify_payment($paymentRef);
+        // $result = $paytabsApi->verify_payment($paymentRef);
+        $result = $paytabsApi->read_response(false);
+        if (!$result) {
+            PrestaShopLogger::addLog('PayTabs: Return reading response error', 3, null, 'Cart', null, true, null);
+            return;
+        }
 
         $success = $result->success;
         $message = $result->message;
         $orderId = @$result->reference_no;
-        $transaction_ref = @$result->transaction_id;
-        $amountPaid = $result->cart_amount;
 
         if (!$success) {
             $logMsg = json_encode($result);
             PrestaShopLogger::addLog(
-                "PayTabs - PagePage: payment failed, payment_ref = {$paymentRef}, response: [{$logMsg}]",
+                "PayTabs: payment failed, payment_ref = {$paymentRef}, response: [{$logMsg}]",
                 3,
                 null,
                 'Cart',
@@ -78,7 +81,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
         }
         if (!$authorized) {
             // die($this->module->_trans('This payment method is not available.'));
-            PrestaShopLogger::addLog('PayTabs - PagePage: redirecting error', 3, null, 'Cart', null, true, null);
+            PrestaShopLogger::addLog('PayTabs: redirecting error', 3, null, 'Cart', null, true, null);
         }
 
         /** @var CustomerCore $customer */
@@ -95,7 +98,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
          * Place the order
          */
 
-        $this->module->validateOrder(
+        /*$this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
             (float) $amountPaid,
@@ -105,7 +108,7 @@ class PayTabs_PayPageValidationModuleFrontController extends ModuleFrontControll
             (int) $cart->id_currency,
             false,
             $customer->secure_key
-        );
+        );*/
 
         /**
          * Redirect the customer to the order confirmation page

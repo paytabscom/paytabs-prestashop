@@ -40,7 +40,7 @@ class PayTabs_PayPage extends PaymentModule
         $this->tab                    = 'payments_gateways';
         $this->version                = PAYTABS_PAYPAGE_VERSION;
         $this->author                 = 'PayTabs';
-        $this->controllers            = array('payment', 'validation');
+        $this->controllers            = array('payment', 'validation', 'callback');
         $this->currencies             = true;
         $this->currencies_mode        = 'checkbox';
         $this->bootstrap              = true;

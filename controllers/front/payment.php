@@ -104,6 +104,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     // $siteUrl = Context::getContext()->shop->getBaseURL(true);
     $return_url = Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['p' => $paymentKey]);
+    $callback_url = Context::getContext()->link->getModuleLink($this->module->name, 'callback', ['p' => $paymentKey]);
 
     //
 
@@ -167,7 +168,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         null
       )
       ->set06HideShipping($hide_shipping)
-      ->set07URLs($return_url, null)
+      ->set07URLs($return_url, $callback_url)
       ->set08Lang($lang_)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
