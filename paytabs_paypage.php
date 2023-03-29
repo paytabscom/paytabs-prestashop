@@ -13,7 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.4.0');
+define('PAYTABS_PAYPAGE_VERSION', '3.4.1');
 
 require_once __DIR__ . '/paytabs_core.php';
 
@@ -40,7 +40,7 @@ class PayTabs_PayPage extends PaymentModule
         $this->tab                    = 'payments_gateways';
         $this->version                = PAYTABS_PAYPAGE_VERSION;
         $this->author                 = 'PayTabs';
-        $this->controllers            = array('payment', 'validation');
+        $this->controllers            = array('payment', 'validation', 'callback');
         $this->currencies             = true;
         $this->currencies_mode        = 'checkbox';
         $this->bootstrap              = true;
