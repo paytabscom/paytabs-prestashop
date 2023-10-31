@@ -60,7 +60,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             // ToDo
 
             PrestaShopLogger::addLog(
-                "PayTabs: Callback payment needs review, payment_ref = {$transaction_ref}, response: [{$res_msg}]",
+                "PayTabs: Callback payment is pending and needs review, payment_ref = {$transaction_ref}, response: [{$res_msg}]",
                 2,
                 null,
                 'Cart',
