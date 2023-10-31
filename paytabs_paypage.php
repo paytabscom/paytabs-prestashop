@@ -13,7 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.6.1');
+define('PAYTABS_PAYPAGE_VERSION', '3.7.0');
 
 require_once __DIR__ . '/paytabs_core.php';
 
