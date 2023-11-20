@@ -62,7 +62,9 @@ class PayTabs_PayPage extends PaymentModule
     {
         return parent::install()
             && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
-            && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentReturn')
+            && $this->generate_is_hold_flag();
+
     }
 
 
@@ -557,4 +559,16 @@ class PayTabs_PayPage extends PaymentModule
             $controller->setTemplate('payment_error.tpl');
         }
     }
+    
+
+    private function generate_is_hold_flag()
+    {
+        $sql = 'ALTER TABLE ' . _DB_PREFIX_ . 'orders ADD COLUMN on_hold_flag TINYINT(1) DEFAULT 0';
+        // Execute the SQL query
+        if (!Db::getInstance()->execute($sql)) {
+            return false;
+        }
+        return true;
+    }
+
 }
