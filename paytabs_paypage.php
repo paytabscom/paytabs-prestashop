@@ -180,6 +180,33 @@ class PayTabs_PayPage extends PaymentModule
                             'label' => 'Order in Checkout page',
                             'name' => 'sort_' . $code
                         ),
+                        array(
+                            'type' => 'text',
+                            'label' => 'Config id (Theme)',
+                            'name' => 'config_id_' . $code
+                        ),
+                        array(
+                            'type' => 'switch',
+                            'label' => 'Alt Currency Enable',
+                            'name' => 'alt_currency_enable_' . $code,
+                            'is_bool' => true,
+                            'values' => array(
+                                array(
+                                    'value' => true,
+                                    'label' => $this->_trans('Enabled', array(), 'Admin.Global'),
+                                ),
+                                array(
+                                    'value' => false,
+                                    'label' => $this->_trans('Disabled', array(), 'Admin.Global'),
+                                )
+                            ),
+                        ),
+                        array(
+                            'type' => 'text',
+                            'label' => 'Alt Currency',
+                            'name' => 'alt_currency_' . $code,
+                        ),
+
                     )
                 ),
             );
@@ -243,6 +270,11 @@ class PayTabs_PayPage extends PaymentModule
             $acc["server_key_{$code}"] = Tools::getValue("server_key_{$code}", Configuration::get("server_key_{$code}"));
 
             $acc["hide_shipping_{$code}"] = Tools::getValue("hide_shipping_{$code}", Configuration::get("hide_shipping_{$code}"));
+
+            $acc["config_id_{$code}"] = Tools::getValue("config_id_{$code}", Configuration::get("config_id_{$code}"));
+
+            $acc["alt_currency_enable_{$code}"] = Tools::getValue("alt_currency_enable_{$code}", Configuration::get("alt_currency_enable_{$code}"));
+            $acc["alt_currency_{$code}"] = Tools::getValue("alt_currency_{$code}", Configuration::get("alt_currency_{$code}"));
 
             $sort = (int)Tools::getValue("sort_{$code}", Configuration::get("sort_{$code}"));
             if (!$sort) {
@@ -319,6 +351,12 @@ class PayTabs_PayPage extends PaymentModule
                 if (PaytabsHelper::isCardPayment($code)) {
                     Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
                 }
+
+                Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));
+
+                Configuration::updateValue("alt_currency_enable_{$code}", (bool)Tools::getValue("alt_currency_enable_{$code}"));
+                Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
+
             }
         }
         $this->_html .= $this->displayConfirmation($this->_trans('Settings updated', array(), 'Admin.Global'));
