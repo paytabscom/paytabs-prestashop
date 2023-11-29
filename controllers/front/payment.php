@@ -178,9 +178,9 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set11ThemeConfigId($config_id)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
-      if ($alt_currency_enable) {
-        $pt_holder->set12AltCurrency($this->getAltCurrency($alt_currency));
-      }
+    if ($alt_currency_enable) {
+      $pt_holder->set12AltCurrency($this->getAltCurrency($alt_currency));
+    }
 
     $post_arr = $pt_holder->pt_build();
 
@@ -196,10 +196,10 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
   private function getAltCurrency($alt_currency)
   {
-      if (isset($alt_currency) && !empty($alt_currency)) {
-          return $alt_currency;
-      }
+    if (isset($alt_currency) && !empty($alt_currency)) {
+      return $alt_currency;
+    }
 
-      return $this->context->currency->iso_code;
+    return $this->context->currency->iso_code;
   }
 }

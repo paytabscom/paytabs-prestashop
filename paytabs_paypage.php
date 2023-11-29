@@ -183,11 +183,11 @@ class PayTabs_PayPage extends PaymentModule
                         array(
                             'type' => 'text',
                             'label' => 'Config id (Theme)',
-                            'name' => 'config_id_' . $code
+                            'name' => 'config_id_' . $code,
                         ),
                         array(
                             'type' => 'switch',
-                            'label' => 'Alt Currency Enable',
+                            'label' => 'Alternative currency enable',
                             'name' => 'alt_currency_enable_' . $code,
                             'is_bool' => true,
                             'values' => array(
@@ -203,7 +203,7 @@ class PayTabs_PayPage extends PaymentModule
                         ),
                         array(
                             'type' => 'text',
-                            'label' => 'Alt Currency',
+                            'label' => 'Alternative Currency',
                             'name' => 'alt_currency_' . $code,
                         ),
 
@@ -356,7 +356,6 @@ class PayTabs_PayPage extends PaymentModule
 
                 Configuration::updateValue("alt_currency_enable_{$code}", (bool)Tools::getValue("alt_currency_enable_{$code}"));
                 Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
-
             }
         }
         $this->_html .= $this->displayConfirmation($this->_trans('Settings updated', array(), 'Admin.Global'));
