@@ -7,7 +7,7 @@ Supports PrestaShop **1.6** & **1.7**
 
 ## Installation
 
-Download the compressed version from Releases page ([3.7.0](https://github.com/paytabscom/paytabs-prestashop/releases/download/3.7.0/paytabs_paypage.zip))
+Download the compressed version from Releases page ([3.8.0](https://github.com/paytabscom/paytabs-prestashop/releases/download/3.8.0/paytabs_paypage.zip))
 
 *Then use of of the following 2 mehods:*
 
