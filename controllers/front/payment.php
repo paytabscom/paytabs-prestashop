@@ -58,6 +58,11 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $hide_shipping = (bool) $this->getConfig('hide_shipping');
     $allow_associated_methods = (bool) $this->getConfig('allow_associated_methods');
 
+    $config_id = $this->getConfig('config_id') ?? "";
+
+    $alt_currency_enable = (bool) $this->getConfig('alt_currency_enable');
+    $alt_currency = $this->getConfig('alt_currency') ?? "";
+
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
 
@@ -170,7 +175,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set06HideShipping($hide_shipping)
       ->set07URLs($return_url, $callback_url)
       ->set08Lang($lang_)
+      ->set11ThemeConfigId($config_id)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
+
+    if ($alt_currency_enable) {
+      $pt_holder->set12AltCurrency($this->getAltCurrency($alt_currency));
+    }
 
     $post_arr = $pt_holder->pt_build();
 
@@ -182,5 +192,14 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
   private function getConfig($key)
   {
     return Configuration::get("{$key}_{$this->paymentType}");
+  }
+
+  private function getAltCurrency($alt_currency)
+  {
+    if (isset($alt_currency) && !empty($alt_currency)) {
+      return $alt_currency;
+    }
+
+    return $this->context->currency->iso_code;
   }
 }
