@@ -17,6 +17,8 @@ define('PAYTABS_PAYPAGE_VERSION', '3.6.0');
 
 require_once __DIR__ . '/paytabs_core.php';
 
+
+
 function paytabs_error_log($msg, $severity)
 {
     PrestaShopLogger::addLog($msg, $severity);
@@ -63,7 +65,7 @@ class PayTabs_PayPage extends PaymentModule
         return parent::install()
             && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
             && $this->registerHook('paymentReturn')
-            && $this->generate_is_hold_flag();
+            && $this->generate_paytabs_order_status();
 
     }
 
@@ -561,14 +563,63 @@ class PayTabs_PayPage extends PaymentModule
     }
     
 
-    private function generate_is_hold_flag()
+    private function generate_paytabs_order_status()
     {
-        $sql = 'ALTER TABLE ' . _DB_PREFIX_ . 'orders ADD COLUMN on_hold_flag TINYINT(1) DEFAULT 0';
-        // Execute the SQL query
-        if (!Db::getInstance()->execute($sql)) {
-            return false;
+        // Usage example
+        $paytabs_status = 'Awaiting Paytabs Payment';
+
+        if ($this->isPaytabsOrderStateExists($paytabs_status)) {
+            paytabs_error_log('paytabs pending status already exist',1);
+            return true;
+        } else {
+            paytabs_error_log('paytabs pending status not exist',1);
+            // Create a new order state
+            $orderState = new OrderState();
+            $orderState->name = array();
+            foreach (Language::getLanguages() as $language) {
+                $orderState->name[$language['id_lang']] = $paytabs_status;
+            }
+            $orderState->color = '#4169E1'; // Set the color for the status label
+            $orderState->send_email = false; // Set to true if you want to send an email to the customer
+            $orderState->module_name = 'paytabs_paypage'; // Replace with your module name or identifier
+            
+            // Save the order state
+            if ($orderState->add()) {
+                paytabs_error_log('paytabs pending status added successfully',1);
+                 // Get the ID of the newly added order state
+                $orderStateId = $orderState->id;
+
+                // Set the multilingual names for the order state
+                foreach (Language::getLanguages() as $language) {
+                    Db::getInstance()->insert('order_state_lang', array(
+                        'id_order_state' => (int)$orderStateId,
+                        'id_lang' => (int)$language['id_lang'],
+                        'name' => $paytabs_status,
+                    ));
+                }
+                paytabs_error_log('paytabs pending status lang added successfully',1);
+               return true;
+            } else {
+                // Error
+                paytabs_error_log('can not add the paytabs pending status . error is : '.Db::getInstance()->getMsgError(),1);
+                return false;
+            }
         }
-        return true;
+
     }
 
+
+    function isPaytabsOrderStateExists($status)
+    {
+        // Get the ID of the default language (you may need to adapt this based on your needs)
+        $idLang = Configuration::get('PS_LANG_DEFAULT');
+        $orderStates = OrderStateCore::getOrderStates($idLang);
+
+        foreach ($orderStates as $orderState) {
+            if ($orderState['name'] == $status) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

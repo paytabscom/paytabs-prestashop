@@ -56,11 +56,60 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             return;
         }
 
-        if ($is_on_hold || $is_pending) {
+        if ($is_on_hold) {
             // ToDo
 
             PrestaShopLogger::addLog(
                 "PayTabs: Callback payment is pending and needs review, payment_ref = {$transaction_ref}, response: [{$res_msg}]",
+                2,
+                null,
+                'Cart',
+                $orderId,
+                true,
+                null
+            );
+
+            return;
+        }
+
+        if($is_pending)
+        {
+            PrestaShopLogger::addLog(
+                "PayTabs: Callback payment is pending and needs review, payment_ref = {$transaction_ref}, response: [{$res_msg}]",
+                2,
+                null,
+                'Cart',
+                $orderId,
+                true,
+                null
+            );
+
+            // Load the order
+            $order = new Order($orderId);
+
+            // Replace with the desired order status name
+            $paytabs_status = 'Awaiting Paytabs Payment';
+
+            // Get the default language ID
+            $idLang = Configuration::get('PS_LANG_DEFAULT');
+
+            // Query to retrieve the order status ID by name
+            $sql = 'SELECT os.`id_order_state`
+                    FROM `' . _DB_PREFIX_ . 'order_state` os
+                    LEFT JOIN `' . _DB_PREFIX_ . 'order_state_lang` osl ON (os.`id_order_state` = osl.`id_order_state` AND osl.`id_lang` = ' . (int)$idLang . ')
+                    WHERE osl.`name` = "' . pSQL($paytabs_status) . '"';
+
+            // Execute the SQL query
+            $orderStatusId = Db::getInstance()->getValue($sql);
+
+            if($orderStatusId)
+            {
+                // Update the order status
+                $order->setCurrentState($newOrderStatusId);
+            }
+           
+            PrestaShopLogger::addLog(
+                "PayTabs: pending payment is assigned to this order by paytabs pending status ",
                 2,
                 null,
                 'Cart',
