@@ -271,6 +271,10 @@ abstract class PaytabsEnum
 
     //
 
+    const DISCOUNT_PERCENTAGE = "percentage";
+    const DISCOUNT_FIXED = "fixed";
+
+
     static function TranIsAuth($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_AUTH) == 0;
@@ -742,6 +746,10 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
      */
     private $alt_currency;
 
+    /**
+     * card_discounts
+     */
+    private $card_discounts;
     //
 
     /**
@@ -756,7 +764,8 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             $this->hide_shipping,
             $this->framed,
             $this->config_id,
-            $this->alt_currency
+            $this->alt_currency,
+            $this->card_discounts
         );
 
         return $all;
@@ -806,6 +815,33 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             $this->alt_currency = [
                 'alt_currency' => $alt_currency
             ];
+        }
+        return $this;
+    }
+
+    public function set13CardDiscounts($code, $currency, $discount_cards, $discount_amounts, $discount_types)
+    {
+        if (PaytabsHelper::isCardPayment($code) && $discount_cards) {
+            
+            $cards = [];
+
+            foreach ($discount_cards as $key => $card) {
+                
+                $cards[$key]['discount_cards']    = $discount_cards[$key];
+
+                if ($discount_types[$key] == PaytabsEnum::DISCOUNT_PERCENTAGE) {
+                    $cards[$key]['discount_percent']   = $discount_amounts[$key];
+                    $cards[$key]['discount_title'] = "$discount_amounts[$key]% discount on cards start with $discount_cards[$key]";
+                }else{
+                    $cards[$key]['discount_amount']   = $discount_amounts[$key];
+                    $cards[$key]['discount_title']    = "$discount_amounts[$key] $currency discount on cards start with $discount_cards[$key]";
+                }
+            }
+            if (count($cards) > 0) {
+                $this->card_discounts = [
+                    'card_discounts' => $cards
+                ];
+            }
         }
         return $this;
     }

@@ -63,6 +63,10 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $alt_currency_enable = (bool) $this->getConfig('alt_currency_enable');
     $alt_currency = $this->getConfig('alt_currency') ?? "";
 
+    $discount_cards = json_decode($this->getConfig('discount_cards')) ?? array();
+    $discount_amounts = json_decode($this->getConfig('discount_amount')) ?? array();
+    $discount_types = json_decode($this->getConfig('discount_type')) ?? array();
+
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
 
@@ -176,7 +180,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set07URLs($return_url, $callback_url)
       ->set08Lang($lang_)
       ->set11ThemeConfigId($config_id)
-      ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
+      ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION)
+      ->set13CardDiscounts($this->paymentType, $currency->iso_code, $discount_cards, $discount_amounts, $discount_types);
 
     if ($alt_currency_enable) {
       $pt_holder->set12AltCurrency($this->getAltCurrency($alt_currency));

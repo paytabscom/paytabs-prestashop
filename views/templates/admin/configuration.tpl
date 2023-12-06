@@ -9,8 +9,8 @@
 {if isset($errors_html)}
     {$errors_html}
 {/if}
-<form id="configuration_form" class="defaultForm form-horizontal" method="post" enctype="multipart/form-data"
-    novalidate>
+<form id="configuration_form" class="defaultForm form-horizontal" method="POST" enctype="multipart/form-data"
+    novalidate action="{$paytabs_action_url}">
     {$i = 2}
     {foreach $paytabs_payment_types as $payment_type}
         
@@ -203,15 +203,14 @@
 
                     </div>
 
-
-                    <div class="form-group">
+                    <div class="form-group discount-card">
                         <div class="col-lg-4">
                             <div class="row">
                                 <label class="control-label col-lg-4">
                                     Discount Cards :
                                 </label>
                                 <div class="col-lg-8">
-                                    <input type="text" name="discount_cards_{$code}[]" value="{Configuration::get("discount_cards_$code")}" class="">
+                                    <input type="text" name="discount_cards_{$code}" value="" class="">
                                 </div>
                             </div>
                         </div>
@@ -222,7 +221,7 @@
                                     Amount :
                                 </label>
                                 <div class="col-lg-6">
-                                    <input type="text" name="discount_amount_{$code}[]" value="{Configuration::get("discount_amount_$code")}" class="">
+                                    <input type="text" name="discount_amount_{$code}" value="" class="">
                                 </div>
                             </div>
                         </div>
@@ -233,7 +232,7 @@
                                     Type :
                                 </label>
                                 <div class="col-lg-8">
-                                    <select name="discount_types_{$code}[]">
+                                    <select name="discount_type_{$code}">
                                         <option value="fixed">Fixed</option>
                                         <option value="percentage">Percentage</option>
                                     </select>
@@ -242,8 +241,63 @@
                         </div>
 
                         <div class="col-lg-1">
-                            <button type="button" class="btn btn-success add-discount">+</button>
+                            <button type="button" class="btn btn-success add-discount" data-code="{$code}">+</button>
                         </div>
+                    </div>
+
+                    <div class="cards-container">
+                        {$discountCardsArr = Configuration::get("discount_cards_$code")|json_decode}
+                        {$discountAmountArr = Configuration::get("discount_amount_$code")|json_decode}
+                        {$discountTypeArr = Configuration::get("discount_type_$code")|json_decode}
+                        
+                        {if (is_array($discountCardsArr) && count($discountCardsArr) > 0) }
+                            {foreach $discountCardsArr as $key => $card }
+                                {* {if (!$discountCardsArr[$key] || !$discountAmountArr[$key])}
+                                    {continue}
+                                {/if} *}
+                                <div class="form-group discount-card">
+                                    <div class="col-lg-4">
+                                        <div class="row">
+                                            <label class="control-label col-lg-4">
+                                                Discount Cards :
+                                            </label>
+                                            <div class="col-lg-8">
+                                                <input type="text" name="discount_cards_{$code}[]" value="{$discountCardsArr[$key]}" class="" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-lg-3">
+                                        <div class="row">
+                                            <label class="control-label col-lg-6">
+                                                Amount :
+                                            </label>
+                                            <div class="col-lg-6">
+                                                <input type="text" name="discount_amount_{$code}[]" value="{$discountAmountArr[$key]}" class="" readonly>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-4">
+                                        <div class="row">
+                                            <label class="control-label col-lg-4">
+                                                Type :
+                                            </label>
+                                            <div class="col-lg-8">
+                                                <select name="discount_type_{$code}[]" readonly>
+                                                    <option value="fixed" {(($discountTypeArr[$key] == "fixed") ? "selected" : "")}>Fixed</option>
+                                                    <option value="percentage" {(($discountTypeArr[$key] == "percentage") ? "selected" : "")}>Percentage</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-lg-1">
+                                        <button type="button" class="btn btn-danger" onclick="removeRow(this)" data-code="` + code + `">-</button>
+                                    </div>
+                                </div>
+                            {/foreach}
+                        {/if}
                     </div>
 
                 {/if}
@@ -271,5 +325,86 @@
 </form>
 
 <script>
-    //
+    
+    let addDiscountBtns = document.getElementsByClassName('add-discount');
+    
+    for (let i = 0; i < addDiscountBtns.length; i++) {
+        let btn = addDiscountBtns[i];
+        btn.addEventListener('click', (e) => addDiscountRow(btn))
+    }
+
+    function addDiscountRow(btn)
+    {        
+        let code = btn.getAttribute('data-code');
+        let discountCard  = btn.closest('.discount-card');
+
+        let cardsInput = discountCard.querySelector('input[name="discount_cards_'+code+'"]');
+        let amountInput = discountCard.querySelector('input[name="discount_amount_'+code+'"]');
+        let typeInput = discountCard.querySelector('select[name="discount_type_'+code+'"]');
+
+        let discount    = {};
+        discount.cards  = cardsInput.value;
+        discount.amount = amountInput.value;
+        discount.type   = typeInput.value;
+
+        cardsInput.value = amountInput.value = "";
+        typeInput.selectedIndex = "0"
+
+        let newDiscountRow = getRowHtml(code, discount);
+
+        discountCard.insertAdjacentHTML('afterend', newDiscountRow);
+    }
+
+    function getRowHtml(code, discount) 
+    {
+        let cardHtml = `
+            <div class="form-group discount-card">
+                <div class="col-lg-4">
+                    <div class="row">
+                        <label class="control-label col-lg-4">
+                            Discount Cards :
+                        </label>
+                        <div class="col-lg-8">
+                            <input type="text" name="discount_cards_` + code + `[]" value="` + discount.cards + `" class="" readonly>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3">
+                    <div class="row">
+                        <label class="control-label col-lg-6">
+                            Amount :
+                        </label>
+                        <div class="col-lg-6">
+                            <input type="text" name="discount_amount_` + code + `[]" value="` + discount.amount + `" class="" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="row">
+                        <label class="control-label col-lg-4">
+                            Type :
+                        </label>
+                        <div class="col-lg-8">
+                            <select name="discount_type_` + code + `[]" readonly>
+                                <option value="fixed" ` + ((discount.type == "fixed") ? "selected" : "") + `>Fixed</option>
+                                <option value="percentage" `+ ((discount.type == "percentage") ? "selected" : "") + `>Percentage</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-1">
+                    <button type="button" class="btn btn-danger" onclick="removeRow(this)" data-code="` + code + `">-</button>
+                </div>
+            </div>`;
+            
+        return cardHtml;
+    }
+
+    function removeRow(btn)
+    {
+        btn.closest('.discount-card').remove();
+    }
 </script>
