@@ -210,7 +210,7 @@
                                     Discount Cards :
                                 </label>
                                 <div class="col-lg-8">
-                                    <input type="text" name="discount_cards_{$code}" value="" class="">
+                                    <input type="text" name="discount_cards_input_{$code}" value="" class="">
                                 </div>
                             </div>
                         </div>
@@ -221,7 +221,7 @@
                                     Amount :
                                 </label>
                                 <div class="col-lg-6">
-                                    <input type="text" name="discount_amount_{$code}" value="" class="">
+                                    <input type="text" name="discount_amount_input_{$code}" value="" class="">
                                 </div>
                             </div>
                         </div>
@@ -232,7 +232,7 @@
                                     Type :
                                 </label>
                                 <div class="col-lg-8">
-                                    <select name="discount_type_{$code}">
+                                    <select name="discount_type_select_{$code}">
                                         <option value="fixed">Fixed</option>
                                         <option value="percentage">Percentage</option>
                                     </select>
@@ -338,9 +338,9 @@
         let code = btn.getAttribute('data-code');
         let discountCard  = btn.closest('.discount-card');
 
-        let cardsInput = discountCard.querySelector('input[name="discount_cards_'+code+'"]');
-        let amountInput = discountCard.querySelector('input[name="discount_amount_'+code+'"]');
-        let typeInput = discountCard.querySelector('select[name="discount_type_'+code+'"]');
+        let cardsInput = discountCard.querySelector('input[name="discount_cards_input_'+code+'"]');
+        let amountInput = discountCard.querySelector('input[name="discount_amount_input_'+code+'"]');
+        let typeInput = discountCard.querySelector('select[name="discount_type_select_'+code+'"]');
 
         let discount    = {};
         discount.cards  = cardsInput.value;
