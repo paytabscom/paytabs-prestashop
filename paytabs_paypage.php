@@ -134,7 +134,9 @@ class PayTabs_PayPage extends PaymentModule
         if (!Tools::isSubmit('btnSubmit')) return;
 
         foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+            
             $code = $method['name'];
+
             if (Tools::getValue("active_{$code}")) {
                 if (!Tools::getValue("endpoint_{$code}")) {
                     $this->_postErrors[] = "{$method['title']}: Endpoint is required.";
@@ -187,8 +189,11 @@ class PayTabs_PayPage extends PaymentModule
     protected function _postProcess()
     {
         if (Tools::isSubmit('btnSubmit')) {
+            
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+
                 $code = $method['name'];
+
                 Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
 
                 Configuration::updateValue("endpoint_{$code}", Tools::getValue("endpoint_{$code}"));
@@ -211,11 +216,10 @@ class PayTabs_PayPage extends PaymentModule
                     $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
                     $discount_types  = Tools::getValue("discount_type_{$code}", array());
                     
-                    if($discount_cards){
-                        Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
-                        Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
-                        Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
-                    }
+                    Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
+                    Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
+                    Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
+
                 }
 
                 Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));
