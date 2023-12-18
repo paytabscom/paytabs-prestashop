@@ -101,28 +101,26 @@ class PayTabs_PayPage extends PaymentModule
         ]);
 
         // handle submit
-         
+
         if (Tools::isSubmit('btnSubmit')) {
-            
+
             $this->_postValidation();
 
             if (!count($this->_postErrors)) {
-                
-                $this->_postProcess();
 
+                $this->_postProcess();
             } else {
 
                 foreach ($this->_postErrors as $err) {
                     $this->_html .= $this->displayError($err);
                 }
-                
+
                 $this->context->smarty->assign([
                     'errors_html' => $this->_html,
                 ]);
 
                 return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
             }
-
         }
 
         return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
@@ -134,7 +132,7 @@ class PayTabs_PayPage extends PaymentModule
         if (!Tools::isSubmit('btnSubmit')) return;
 
         foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
-            
+
             $code = $method['name'];
 
             if (Tools::getValue("active_{$code}")) {
@@ -153,14 +151,14 @@ class PayTabs_PayPage extends PaymentModule
                 }
             }
 
-            if (PaytabsHelper::isCardPayment($code) && (Tools::getValue("discount_cards_{$code}") )) {
-                
-                $discount_cards  = array_filter((array)Tools::getValue("discount_cards_{$code}"), function($card){
-                    
+            if (PaytabsHelper::isCardPayment($code) && (Tools::getValue("discount_cards_{$code}"))) {
+
+                $discount_cards  = array_filter((array)Tools::getValue("discount_cards_{$code}"), function ($card) {
+
                     $exploded = explode(',', $card);
 
                     foreach ($exploded as $prefix) {
-                        if(!preg_match('/^[0-9]{4,10}$/', $prefix)){
+                        if (!preg_match('/^[0-9]{4,10}$/', $prefix)) {
                             $this->_postErrors['unmatching'] = "Card discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
                             return 0;
                         }
@@ -168,16 +166,16 @@ class PayTabs_PayPage extends PaymentModule
 
                     return 1;
                 });
-                
-                $discount_amounts = array_filter(array_map(function($amount){
+
+                $discount_amounts = array_filter(array_map(function ($amount) {
                     return (int)$amount;
-                }, Tools::getValue("discount_amount_{$code}") ), function($amount){
+                }, Tools::getValue("discount_amount_{$code}")), function ($amount) {
                     return (is_numeric($amount) && $amount != 0);
                 });
 
-                if ( (($discount_cards && !$discount_amounts) ||
-                (!$discount_cards && $discount_amounts) ||
-                (count($discount_cards) != count($discount_amounts))) && (!array_key_exists('unmatching', $this->_postErrors)) 
+                if ((($discount_cards && !$discount_amounts) ||
+                        (!$discount_cards && $discount_amounts) ||
+                        (count($discount_cards) != count($discount_amounts))) && (!array_key_exists('unmatching', $this->_postErrors))
                 ) {
                     $this->_postErrors[] = "Both discount values (cards, amount) should be either set or not set.";
                 }
@@ -189,7 +187,7 @@ class PayTabs_PayPage extends PaymentModule
     protected function _postProcess()
     {
         if (Tools::isSubmit('btnSubmit')) {
-            
+
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
 
                 $code = $method['name'];
@@ -209,17 +207,18 @@ class PayTabs_PayPage extends PaymentModule
                     Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
                 }
 
-                if (PaytabsHelper::isCardPayment($code)) {
-                    Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
+                if ($code == 'all' || PaytabsHelper::isCardPayment($code)) {
+                    if (PaytabsHelper::isCardPayment($code)) {
+                        Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
+                    }
 
                     $discount_cards  = Tools::getValue("discount_cards_{$code}", array());
                     $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
                     $discount_types  = Tools::getValue("discount_type_{$code}", array());
-                    
+
                     Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
                     Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
                     Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
-
                 }
 
                 Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));

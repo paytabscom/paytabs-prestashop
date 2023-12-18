@@ -819,28 +819,29 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         return $this;
     }
 
-    public function set13CardDiscounts($code, $currency, $discount_cards, $discount_amounts, $discount_types)
+    public function set13CardDiscounts($discount_cards, $discount_amounts, $discount_types)
     {
-        if (PaytabsHelper::isCardPayment($code) && $discount_cards) {
-            
-            $cards = [];
+        if (!empty($discount_cards)) {
+            if (count($discount_cards) == count($discount_amounts) && count($discount_cards) == count($discount_types)) {
+                $cards = [];
 
-            foreach ($discount_cards as $key => $card) {
-                
-                $cards[$key]['discount_cards']    = $discount_cards[$key];
+                foreach ($discount_cards as $key => $card) {
 
-                if ($discount_types[$key] == PaytabsEnum::DISCOUNT_PERCENTAGE) {
-                    $cards[$key]['discount_percent']   = $discount_amounts[$key];
-                    $cards[$key]['discount_title'] = "$discount_amounts[$key]% discount on cards start with $discount_cards[$key]";
-                }else{
-                    $cards[$key]['discount_amount']   = $discount_amounts[$key];
-                    $cards[$key]['discount_title']    = "$discount_amounts[$key] $currency discount on cards start with $discount_cards[$key]";
+                    $cards[$key]['discount_cards'] = $discount_cards[$key];
+
+                    if ($discount_types[$key] == PaytabsEnum::DISCOUNT_PERCENTAGE) {
+                        $cards[$key]['discount_percent'] = $discount_amounts[$key];
+                        $cards[$key]['discount_title'] = "$discount_amounts[$key]% discount applied on cards start with $discount_cards[$key]";
+                    } else {
+                        $cards[$key]['discount_amount'] = $discount_amounts[$key];
+                        $cards[$key]['discount_title'] = "$discount_amounts[$key] fixed discount applied on cards start with $discount_cards[$key]";
+                    }
                 }
-            }
-            if (count($cards) > 0) {
-                $this->card_discounts = [
-                    'card_discounts' => $cards
-                ];
+                if (count($cards) > 0) {
+                    $this->card_discounts = [
+                        'card_discounts' => $cards
+                    ];
+                }
             }
         }
         return $this;

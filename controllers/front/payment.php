@@ -180,8 +180,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set07URLs($return_url, $callback_url)
       ->set08Lang($lang_)
       ->set11ThemeConfigId($config_id)
-      ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION)
-      ->set13CardDiscounts($this->paymentType, $currency->iso_code, $discount_cards, $discount_amounts, $discount_types);
+      ->set13CardDiscounts($discount_cards, $discount_amounts, $discount_types)
+      ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
     if ($alt_currency_enable) {
       $pt_holder->set12AltCurrency($this->getAltCurrency($alt_currency));

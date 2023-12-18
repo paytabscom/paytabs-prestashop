@@ -182,7 +182,7 @@
                 {/if}
 
 
-                {if (PaytabsHelper::isCardPayment($code)) }
+                {if (PaytabsHelper::isCardPayment($code) || $code == 'all') }
                     <div class="form-group">
 
                         <label class="control-label col-lg-4">
