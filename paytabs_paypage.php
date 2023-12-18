@@ -69,8 +69,8 @@ class PayTabs_PayPage extends PaymentModule
             && $this->registerHook('paymentReturn')
             && $this->registerHook('actionOrderStatusUpdate');
 
-            /* Partial Refund hook */
-            // && $this->registerHook('actionProductCancel');
+        /* Partial Refund hook */
+        // && $this->registerHook('actionProductCancel');
     }
 
 
@@ -129,28 +129,26 @@ class PayTabs_PayPage extends PaymentModule
         ]);
 
         // handle submit
-         
+
         if (Tools::isSubmit('btnSubmit')) {
-            
+
             $this->_postValidation();
 
             if (!count($this->_postErrors)) {
-                
-                $this->_postProcess();
 
+                $this->_postProcess();
             } else {
 
                 foreach ($this->_postErrors as $err) {
                     $this->_html .= $this->displayError($err);
                 }
-                
+
                 $this->context->smarty->assign([
                     'errors_html' => $this->_html,
                 ]);
 
                 return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
             }
-
         }
 
         return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
@@ -162,7 +160,7 @@ class PayTabs_PayPage extends PaymentModule
         if (!Tools::isSubmit('btnSubmit')) return;
 
         foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
-            
+
             $code = $method['name'];
 
             if (Tools::getValue("active_{$code}")) {
@@ -181,14 +179,14 @@ class PayTabs_PayPage extends PaymentModule
                 }
             }
 
-            if (PaytabsHelper::isCardPayment($code) && (Tools::getValue("discount_cards_{$code}") )) {
-                
-                $discount_cards  = array_filter((array)Tools::getValue("discount_cards_{$code}"), function($card){
-                    
+            if (PaytabsHelper::isCardPayment($code) && (Tools::getValue("discount_cards_{$code}"))) {
+
+                $discount_cards  = array_filter((array)Tools::getValue("discount_cards_{$code}"), function ($card) {
+
                     $exploded = explode(',', $card);
 
                     foreach ($exploded as $prefix) {
-                        if(!preg_match('/^[0-9]{4,10}$/', $prefix)){
+                        if (!preg_match('/^[0-9]{4,10}$/', $prefix)) {
                             $this->_postErrors['unmatching'] = "Card discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
                             return 0;
                         }
@@ -196,16 +194,16 @@ class PayTabs_PayPage extends PaymentModule
 
                     return 1;
                 });
-                
-                $discount_amounts = array_filter(array_map(function($amount){
+
+                $discount_amounts = array_filter(array_map(function ($amount) {
                     return (int)$amount;
-                }, Tools::getValue("discount_amount_{$code}") ), function($amount){
+                }, Tools::getValue("discount_amount_{$code}")), function ($amount) {
                     return (is_numeric($amount) && $amount != 0);
                 });
 
-                if ( (($discount_cards && !$discount_amounts) ||
-                (!$discount_cards && $discount_amounts) ||
-                (count($discount_cards) != count($discount_amounts))) && (!array_key_exists('unmatching', $this->_postErrors)) 
+                if ((($discount_cards && !$discount_amounts) ||
+                        (!$discount_cards && $discount_amounts) ||
+                        (count($discount_cards) != count($discount_amounts))) && (!array_key_exists('unmatching', $this->_postErrors))
                 ) {
                     $this->_postErrors[] = "Both discount values (cards, amount) should be either set or not set.";
                 }
@@ -217,7 +215,7 @@ class PayTabs_PayPage extends PaymentModule
     protected function _postProcess()
     {
         if (Tools::isSubmit('btnSubmit')) {
-            
+
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
 
                 $code = $method['name'];
@@ -243,11 +241,10 @@ class PayTabs_PayPage extends PaymentModule
                     $discount_cards  = Tools::getValue("discount_cards_{$code}", array());
                     $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
                     $discount_types  = Tools::getValue("discount_type_{$code}", array());
-                    
+
                     Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
                     Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
                     Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
-
                 }
 
                 Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));
@@ -496,12 +493,12 @@ class PayTabs_PayPage extends PaymentModule
     public function hookActionOrderStatusUpdate($params)
     {
         $order = new Order((int) $params['id_order']);
-        
+
         if (Validate::isLoadedObject($order) && $order->module == $this->name) {
 
-            if ($params['oldOrderStatus']->id == Configuration::get('PS_OS_REFUND')){
+            if ($params['oldOrderStatus']->id == Configuration::get('PS_OS_REFUND')) {
                 $this->get('session')->getFlashBag()->add('error', "The refunded order cannot be changed");
-                Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
+                Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders', true));
                 exit;
             }
 
@@ -512,9 +509,9 @@ class PayTabs_PayPage extends PaymentModule
                 $code = DB::getInstance()->getValue("SELECT payment_method FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "'");
                 $refundResult = $this->processRefund($order, $code);
 
-                if ( $refundResult !== true){
+                if ($refundResult !== true) {
                     $this->get('session')->getFlashBag()->add('error', $refundResult);
-                    Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
+                    Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders', true));
                     exit;
                 }
             }
@@ -522,7 +519,7 @@ class PayTabs_PayPage extends PaymentModule
     }
 
     private function processRefund(Order $order, $code)
-    {   
+    {
         $payment_refrence = DB::getInstance()->getRow("SELECT transaction_ref, transaction_amount FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "'");
         $currency = new Currency((int) $order->id_currency);
 
@@ -558,14 +555,13 @@ class PayTabs_PayPage extends PaymentModule
                 'payment_method' => $code
             ];
 
-            if(!PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)){
-                PaytabsHelper::log("Refund success, But DB insert failed in " . PT_DB_TRANSACTIONS_TABLE . " table, [$order->id]", 3);
-                return true;
+            PaytabsHelper::log("Refund success, order [{$order->id} - {$message}]");
+
+            if (!PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)) {
+                PaytabsHelper::log("DB insert failed [$order->id]", 3);
             }
 
-            PaytabsHelper::log("Refund success, order [{$order->id} - {$message}]");
             return true;
-
         } else {
             PaytabsHelper::log("Refund failed, {$order->id} - {$message}", 3);
             return "Refund Error: " . $message;
@@ -575,11 +571,11 @@ class PayTabs_PayPage extends PaymentModule
     /* To be Made :: Partial Refund */
     // public function hookActionProductCancel($params)
     // {
-        // if ($params['action'] == CancellationActionType::STANDARD_REFUND ||
-        //      $params['action'] == CancellationActionType::PARTIAL_REFUND) 
-        // {
+    // if ($params['action'] == CancellationActionType::STANDARD_REFUND ||
+    //      $params['action'] == CancellationActionType::PARTIAL_REFUND) 
+    // {
 
-        // }
+    // }
     // }
 
 }
