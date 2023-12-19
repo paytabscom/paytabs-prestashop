@@ -159,7 +159,7 @@ class PayTabs_PayPage extends PaymentModule
 
                     foreach ($exploded as $prefix) {
                         if (!preg_match('/^[0-9]{4,10}$/', $prefix)) {
-                            $this->_postErrors['unmatching'] = "Card discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
+                            $this->_postErrors['unmatching'] = "Discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
                             return 0;
                         }
                     }
@@ -207,7 +207,7 @@ class PayTabs_PayPage extends PaymentModule
                     Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
                 }
 
-                if ($code == 'all' || PaytabsHelper::isCardPayment($code)) {
+                if (PaytabsHelper::canUseCardFeatures($code)) {
                     if (PaytabsHelper::isCardPayment($code)) {
                         Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
                     }
