@@ -84,6 +84,14 @@ abstract class PaytabsHelper
         return $methods;
     }
 
+    /**
+     * @return true if the payment method can use the Card methods features
+     */
+    static function canUseCardFeatures($code)
+    {
+        return ($code == 'all') || static::isCardPayment($code);
+    }
+
     static function supportTokenization($code)
     {
         foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
@@ -230,6 +238,28 @@ abstract class PaytabsHelper
             }
         }
     }
+
+    static function isValidDiscountPattern($pattern)
+    {
+        return preg_match(PaytabsEnum::DISCOUNT_PATTERN_REGEX, $pattern);
+    }
+
+    /**
+     * Validate the patterns for discount option
+     * @param $patterns_str string, comma separated
+     */
+    static function isValidDiscountPatterns($patterns_str)
+    {
+        $patterns = explode(',', $patterns_str);
+
+        if (empty($patterns)) return false;
+
+        foreach ($patterns as $prefix) {
+            if (!static::isValidDiscountPattern($prefix)) {
+                return false;
+            }
+        }
+    }
 }
 
 
@@ -273,6 +303,10 @@ abstract class PaytabsEnum
 
     const DISCOUNT_PERCENTAGE = "percentage";
     const DISCOUNT_FIXED = "fixed";
+
+    const DISCOUNT_PATTERN_REGEX = '/^[0-9]{4,10}$/';
+
+    //
 
 
     static function TranIsAuth($tran_type)
