@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.17.0
+ * Version: 2.18.0
  * PHP >= 7.0.0
  */
 
@@ -854,31 +854,55 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         return $this;
     }
 
-    public function set13CardDiscounts($discount_cards, $discount_amounts, $discount_types)
+    public function set13CardDiscounts($discount_patterns, $discount_amounts, $discount_types)
     {
-        if (!empty($discount_cards)) {
-            if (count($discount_cards) == count($discount_amounts) && count($discount_cards) == count($discount_types)) {
-                $cards = [];
-
-                foreach ($discount_cards as $key => $card) {
-
-                    $cards[$key]['discount_cards'] = $discount_cards[$key];
-
-                    if ($discount_types[$key] == PaytabsEnum::DISCOUNT_PERCENTAGE) {
-                        $cards[$key]['discount_percent'] = $discount_amounts[$key];
-                        $cards[$key]['discount_title'] = "$discount_amounts[$key]% discount applied on cards start with $discount_cards[$key]";
-                    } else {
-                        $cards[$key]['discount_amount'] = $discount_amounts[$key];
-                        $cards[$key]['discount_title'] = "$discount_amounts[$key] fixed discount applied on cards start with $discount_cards[$key]";
-                    }
-                }
-                if (count($cards) > 0) {
-                    $this->card_discounts = [
-                        'card_discounts' => $cards
-                    ];
-                }
-            }
+        if (empty($discount_patterns)) {
+            PaytabsHelper::log('Paytabs admin: Discount arrays must be not empty', 3);
+            return $this;
         }
+
+        $count = count($discount_patterns);
+
+        if ($count != count($discount_amounts) || $count != count($discount_types)) {
+            PaytabsHelper::log('Paytabs admin: Discount arrays must have the same length', 3);
+            return $this;
+        }
+
+        $cards = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $pattern = $discount_patterns[$i];
+            $amount = $discount_amounts[$i];
+            $type = $discount_types[$i];
+
+            if (!PaytabsHelper::isValidDiscountPattern($pattern)) {
+                PaytabsHelper::log('Paytabs admin: Discount pattern not valid', 2);
+                // uncomment if you want to stop the request, otherwise send the reqeust
+                // return $this;
+            }
+
+            if ($type == PaytabsEnum::DISCOUNT_PERCENTAGE) {
+                $type_key = 'discount_percent';
+                $title = "$discount_amounts[$i]% discount applied on cards starting with $discount_patterns[$i]";
+            } elseif ($type == PaytabsEnum::DISCOUNT_FIXED) {
+                $type_key = 'discount_amount';
+                $title = "$discount_amounts[$i] fixed discount applied on cards starting with $discount_patterns[$i]";
+            } else {
+                PaytabsHelper::log('Paytabs admin: Discount type does not exist', 3);
+                return $this;
+            }
+
+            $cards[$i]['discount_cards'] = $pattern;
+            $cards[$i][$type_key] = $amount;
+            $cards[$i]['discount_title'] = $title;
+        }
+
+        if (count($cards) > 0) {
+            $this->card_discounts = [
+                'card_discounts' => $cards
+            ];
+        }
+
         return $this;
     }
 }
