@@ -164,7 +164,7 @@
                 <div class="form-group">
 
                     <label class="control-label col-lg-3">
-                        Alt Currency Enable
+                        Alternative Currency Enable
                     </label>
 
                     <div class="col-lg-9">
@@ -185,7 +185,7 @@
                 <div class="form-group">
 
                     <label class="control-label col-lg-3">
-                        Alt Currency
+                        Alternative Currency
                     </label>
 
                     <div class="col-lg-9">
@@ -210,7 +210,7 @@
                 {/if}
 
 
-                {if (PaytabsHelper::canUseCardFeatures($code)) }
+                {if (PaytabsHelper::isCardPayment($code)) }
                     <div class="form-group">
 
                         <label class="control-label col-lg-3">
@@ -230,7 +230,9 @@
                         </div>
 
                     </div>
+                {/if}
 
+                {if (PaytabsHelper::canUseCardFeatures($code)) }
                     <div class="form-group">
                         <label class="control-label col-lg-3">
                             Discount Cards:
