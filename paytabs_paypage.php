@@ -151,33 +151,27 @@ class PayTabs_PayPage extends PaymentModule
                 }
             }
 
-            if (PaytabsHelper::isCardPayment($code) && (Tools::getValue("discount_cards_{$code}"))) {
+            if (PaytabsHelper::canUseCardFeatures($code)) {
+                $discounts = Tools::getValue("discount_cards_{$code}");
+                $amounts = Tools::getValue("discount_amount_{$code}");
 
-                $discount_cards  = array_filter((array)Tools::getValue("discount_cards_{$code}"), function ($card) {
-
-                    $exploded = explode(',', $card);
-
-                    foreach ($exploded as $prefix) {
-                        if (!preg_match('/^[0-9]{4,10}$/', $prefix)) {
-                            $this->_postErrors['unmatching'] = "Discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
-                            return 0;
-                        }
-                    }
-
-                    return 1;
-                });
-
-                $discount_amounts = array_filter(array_map(function ($amount) {
-                    return (int)$amount;
-                }, Tools::getValue("discount_amount_{$code}")), function ($amount) {
-                    return (is_numeric($amount) && $amount != 0);
-                });
-
-                if ((($discount_cards && !$discount_amounts) ||
-                        (!$discount_cards && $discount_amounts) ||
-                        (count($discount_cards) != count($discount_amounts))) && (!array_key_exists('unmatching', $this->_postErrors))
-                ) {
+                if ( ($discounts || $amounts) && count($discounts) != count($amounts) ) {
                     $this->_postErrors[] = "Both discount values (cards, amount) should be either set or not set.";
+                    return;
+                }
+
+                foreach ($discounts as $key => $card) {
+                    
+                    if (!PaytabsHelper::isValidDiscountPatterns($card)) {
+                        $this->_postErrors[] = "Discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
+                        return;
+                    }
+                    
+                    $amount_int = (int)$amounts[$key];
+                    if (!(is_numeric($amount_int) && $amount_int > 0)) {
+                        $this->_postErrors[] = "Amount error";
+                        return;
+                    }
                 }
             }
         }
