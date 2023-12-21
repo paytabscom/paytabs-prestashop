@@ -6,7 +6,7 @@
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.17.0');
+define('PAYTABS_SDK_VERSION', '2.18.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -259,6 +259,8 @@ abstract class PaytabsHelper
                 return false;
             }
         }
+
+        return true;
     }
 }
 
