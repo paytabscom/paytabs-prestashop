@@ -1407,8 +1407,8 @@ class PaytabsApi
         }
 
         $response_data = $is_ipn ? $this->enhanceVerify($data) : $this->enhanceReturn($data);
-
-        return $response_data;
+        $result = $this->enhanceDiscount($response_data);
+        return $result;
     }
 
     /**
@@ -1554,6 +1554,22 @@ class PaytabsApi
         }
 
         return $_paypage;
+    }
+
+    private function enhanceDiscount($data)
+    {
+        $data->has_discount = false;
+        $user_defined = @$data->user_defined;
+        
+        if ($user_defined) {
+            foreach ($user_defined as $key => $value) {
+                if ($value == 'has_discount') {
+                    $data->has_discount = true;
+                    return $data;
+                }
+            }
+        }
+        return $data;
     }
 
     /** end: Local calls */

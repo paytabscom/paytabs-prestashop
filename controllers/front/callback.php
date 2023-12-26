@@ -39,7 +39,32 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $transaction_type = @$result->tran_type;
         $response_code = @$result->response_code;
 
-        $amountPaid = $result->cart_amount;
+        $cart_amount = $result->cart_amount;
+        $tran_total  = $result->tran_total;
+
+        if ( $result->has_discount && ($tran_total < $cart_amount) ) {
+
+            $discountTypes   = json_decode(Configuration::get("discount_type_$paymentType"));
+            $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
+
+            foreach($discountAmounts as $key => $card)
+            {
+                $discount = $discountAmounts[$key];
+                $type = $discountTypes[$key];
+                $amount_with_discount;
+
+                if ($type == PaytabsEnum::DISCOUNT_PERCENTAGE){
+                    $amount_with_discount = $cart_amount - ($cart_amount * ($discount / 100));
+                } else {
+                    $amount_with_discount = $cart_amount - $discount;
+                }
+
+                if ($tran_total == $amount_with_discount) {
+                    PaytabsHelper::log('PayTabs: Callback for order with discount' . "[$discount ($type)]", 1);
+                    break;
+                }
+            }
+        }
 
         if ($failed) {
             $logMsg = json_encode($result);
@@ -118,7 +143,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
-            (float) $amountPaid,
+            (float) $cart_amount,
             $this->module->displayName . " ({$paymentType})",
             $res_msg, // message
             ['transaction_id' => $transaction_ref, 'tran_type' => $transaction_type], // extra vars
