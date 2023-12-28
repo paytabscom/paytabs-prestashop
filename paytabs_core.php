@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.18.0
+ * Version: 2.18.0.1
  * PHP >= 7.0.0
  */
 
@@ -1560,7 +1560,7 @@ class PaytabsApi
     {
         $data->has_discount = false;
         $user_defined = @$data->user_defined;
-        
+
         if ($user_defined) {
             foreach ($user_defined as $key => $value) {
                 if ($value == 'has_discount') {
