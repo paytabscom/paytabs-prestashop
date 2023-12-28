@@ -133,11 +133,10 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
             $hasDiscounted = PaytabsHelper::hasDiscountApplied($discountPatterns, $discountAmounts, $discountTypes, $result);
             if ($hasDiscounted) {
-                PaytabsHelper::log("PayTabs ({$paymentType}): Discount detected, {$transaction_ref}, {$orderId}", 1);
                 $amountPaid = $cart_amount;
 
                 PrestaShopLogger::addLog(
-                    "PayTabs: PG Discount detected, payment_ref = {$transaction_ref}, Original amount: {$cart_amount}, Paid amount: {$tran_total}",
+                    "PayTabs ({$paymentType}): Discount detected, {$transaction_ref}, Original amount: {$cart_amount}, Paid amount: {$tran_total}",
                     2,
                     null,
                     'Cart',
