@@ -155,22 +155,23 @@ class PayTabs_PayPage extends PaymentModule
                 $discounts = Tools::getValue("discount_cards_{$code}");
                 $amounts = Tools::getValue("discount_amount_{$code}");
 
-                if ( ($discounts || $amounts) && count($discounts) != count($amounts) ) {
-                    $this->_postErrors[] = "Both discount values (cards, amount) should be either set or not set.";
-                    return;
+                if (!$discounts || !$amounts || count($discounts) < 1) continue;
+
+                if (count($discounts) != count($amounts)) {
+                    $this->_postErrors[] = "{$method['title']}: Invalid (cards, amounts) map.";
+                    continue;
                 }
 
                 foreach ($discounts as $key => $card) {
-                    
                     if (!PaytabsHelper::isValidDiscountPatterns($card)) {
-                        $this->_postErrors[] = "Discount cards prefix allow numbers only and must be between 4 and 10 digits (separated by commas e.g 5200,4411)";
-                        return;
+                        $this->_postErrors[] = "{$method['title']}: Invalid Card pattern, Must be digits only, Length between 4 and 10, Separated by commas, (e.g 5200,4411)";
+                        continue;
                     }
-                    
-                    $amount_int = (int)$amounts[$key];
+
+                    $amount_int = $amounts[$key];
                     if (!(is_numeric($amount_int) && $amount_int > 0)) {
-                        $this->_postErrors[] = "Amount error";
-                        return;
+                        $this->_postErrors[] = "{$method['title']}: Invalid discount amount";
+                        continue;
                     }
                 }
             }

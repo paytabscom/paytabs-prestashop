@@ -5,6 +5,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
     public function postProcess()
     {
+        PaytabsHelper::log("Callback triggered", 1);
+
         $paymentKey = Tools::getValue('p');
 
         if ($paymentKey === false) {
@@ -42,29 +44,12 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $cart_amount = $result->cart_amount;
         $tran_total  = $result->tran_total;
 
-        if ( $result->has_discount && ($tran_total < $cart_amount) ) {
-
-            $discountTypes   = json_decode(Configuration::get("discount_type_$paymentType"));
-            $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
-
-            foreach($discountAmounts as $key => $card)
-            {
-                $discount = $discountAmounts[$key];
-                $type = $discountTypes[$key];
-                $amount_with_discount;
-
-                if ($type == PaytabsEnum::DISCOUNT_PERCENTAGE){
-                    $amount_with_discount = $cart_amount - ($cart_amount * ($discount / 100));
-                } else {
-                    $amount_with_discount = $cart_amount - $discount;
-                }
-
-                if ($tran_total == $amount_with_discount) {
-                    PaytabsHelper::log('PayTabs: Callback for order with discount' . "[$discount ($type)]", 1);
-                    break;
-                }
-            }
-        }
+        /**
+         * The actual paid amount in PT
+         * By default it must be the tran_total
+         * Except in the discount card mode: where it will be the cart_amount
+         */
+        $amountPaid = $tran_total;
 
         if ($failed) {
             $logMsg = json_encode($result);
@@ -136,17 +121,48 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         /** @var CustomerCore $customer */
         $customer = new Customer($cart->id_customer);
 
+        // PT Discount logic
+
+        $discountPatterns = json_decode(Configuration::get("discount_cards_{$paymentType}"));
+        $discountTypes = json_decode(Configuration::get("discount_type_$paymentType"));
+        $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
+
+        $hasDiscounted = PaytabsHelper::hasDiscountApplied($discountPatterns, $discountAmounts, $discountTypes, $result);
+        if ($hasDiscounted) {
+            PaytabsHelper::log("PayTabs ({$paymentType}): Discount detected, {$transaction_ref}, {$orderId}", 1);
+            $amountPaid = $cart_amount;
+
+            PrestaShopLogger::addLog(
+                "PayTabs: PG Discount detected, payment_ref = {$transaction_ref}, Original amount: {$cart_amount}, Paid amount: {$tran_total}",
+                2,
+                null,
+                'Cart',
+                $orderId,
+                true,
+                null
+            );
+        }
+
         /**
          * Place the order
          */
 
+        $extras = [
+            'transaction_id' => $transaction_ref,
+            'tran_type' => $transaction_type
+        ];
+        if ($hasDiscounted) {
+            $extras['discount_flag'] = true;
+            $extras['discount_values'] = "Original amount: {$cart_amount}, Paid amount: {$tran_total}";
+        }
+
         $this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
-            (float) $cart_amount,
+            (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
             $res_msg, // message
-            ['transaction_id' => $transaction_ref, 'tran_type' => $transaction_type], // extra vars
+            $extras, // extra vars
             (int) $cart->id_currency,
             false,
             $customer->secure_key

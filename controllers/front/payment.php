@@ -181,12 +181,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set08Lang($lang_)
       ->set11ThemeConfigId($config_id)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
-      
+
     if (count($discount_cards) > 0) {
-      $pt_holder->set13CardDiscounts($discount_cards, $discount_amounts, $discount_types)
-                ->set50UserDefined('has_discount');
-      
-      PaytabsHelper::log('Preparing Order with discount.', 1);
+      $pt_holder
+        ->set13CardDiscounts($discount_cards, $discount_amounts, $discount_types, true);
+
+      PaytabsHelper::log("PayTabs: Order {$cart->id}, Discount enabled", 1);
     }
 
     if ($alt_currency_enable) {
