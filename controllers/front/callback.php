@@ -19,6 +19,9 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $merchant_id = Configuration::get("profile_id_{$paymentType}");
         $merchant_key = Configuration::get("server_key_{$paymentType}");
 
+        // Should use Admin control
+        $discount_enabled = true; //Configuration::get("discount_enabled_{$paymentType}");
+
         $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 
         //
@@ -123,24 +126,26 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         // PT Discount logic
 
-        $discountPatterns = json_decode(Configuration::get("discount_cards_{$paymentType}"));
-        $discountTypes = json_decode(Configuration::get("discount_type_$paymentType"));
-        $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
+        if ($discount_enabled) {
+            $discountPatterns = json_decode(Configuration::get("discount_cards_{$paymentType}"));
+            $discountTypes = json_decode(Configuration::get("discount_type_$paymentType"));
+            $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
 
-        $hasDiscounted = PaytabsHelper::hasDiscountApplied($discountPatterns, $discountAmounts, $discountTypes, $result);
-        if ($hasDiscounted) {
-            PaytabsHelper::log("PayTabs ({$paymentType}): Discount detected, {$transaction_ref}, {$orderId}", 1);
-            $amountPaid = $cart_amount;
+            $hasDiscounted = PaytabsHelper::hasDiscountApplied($discountPatterns, $discountAmounts, $discountTypes, $result);
+            if ($hasDiscounted) {
+                PaytabsHelper::log("PayTabs ({$paymentType}): Discount detected, {$transaction_ref}, {$orderId}", 1);
+                $amountPaid = $cart_amount;
 
-            PrestaShopLogger::addLog(
-                "PayTabs: PG Discount detected, payment_ref = {$transaction_ref}, Original amount: {$cart_amount}, Paid amount: {$tran_total}",
-                2,
-                null,
-                'Cart',
-                $orderId,
-                true,
-                null
-            );
+                PrestaShopLogger::addLog(
+                    "PayTabs: PG Discount detected, payment_ref = {$transaction_ref}, Original amount: {$cart_amount}, Paid amount: {$tran_total}",
+                    2,
+                    null,
+                    'Cart',
+                    $orderId,
+                    true,
+                    null
+                );
+            }
         }
 
         /**
@@ -151,10 +156,6 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             'transaction_id' => $transaction_ref,
             'tran_type' => $transaction_type
         ];
-        if ($hasDiscounted) {
-            $extras['discount_flag'] = true;
-            $extras['discount_values'] = "Original amount: {$cart_amount}, Paid amount: {$tran_total}";
-        }
 
         $this->module->validateOrder(
             (int) $cart->id,
