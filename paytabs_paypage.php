@@ -211,9 +211,13 @@ class PayTabs_PayPage extends PaymentModule
                     $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
                     $discount_types  = Tools::getValue("discount_type_{$code}", array());
 
+                    $discount_types  = Tools::getValue("discount_type_{$code}", array());
+
                     Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
                     Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
                     Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
+
+                    Configuration::updateValue("discount_enabled_{$code}", (bool)Tools::getValue("discount_enabled_{$code}"));
                 }
 
                 Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));

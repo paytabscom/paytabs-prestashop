@@ -20,7 +20,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $merchant_key = Configuration::get("server_key_{$paymentType}");
 
         // Should use Admin control
-        $discount_enabled = true; //Configuration::get("discount_enabled_{$paymentType}");
+        $discount_enabled = Configuration::get("discount_enabled_$paymentType");
 
         $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 

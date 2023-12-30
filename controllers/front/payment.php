@@ -63,8 +63,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $alt_currency_enable = (bool) $this->getConfig('alt_currency_enable');
     $alt_currency = $this->getConfig('alt_currency') ?? "";
 
-    $discount_enabled = true; // ToDo: fetch from Admin
-
+    $discount_enabled = (bool) $this->getConfig("discount_enabled");
     if ($discount_enabled) {
       $discount_cards = json_decode($this->getConfig('discount_cards')) ?? array();
       $discount_amounts = json_decode($this->getConfig('discount_amount')) ?? array();

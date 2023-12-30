@@ -233,6 +233,27 @@
                 {/if}
 
                 {if (PaytabsHelper::canUseCardFeatures($code)) }
+
+                    <div class="form-group">
+
+                        <label class="control-label col-lg-3">
+                            Discount Enable
+                        </label>
+
+                        <div class="col-lg-9">
+
+                            <span class="switch prestashop-switch fixed-width-lg">
+                                <input type="radio" name="discount_enabled_{$code}" id="discount_enabled_{$code}_on" value="1" {if (Configuration::get("discount_enabled_$code"))} checked="checked" {/if}>
+                                <label for="discount_enabled_{$code}_on">Enabled</label>
+                                <input type="radio" name="discount_enabled_{$code}" id="discount_enabled_{$code}_off" value="" {if (!Configuration::get("discount_enabled_$code"))} checked="checked" {/if}>
+                                <label for="discount_enabled_{$code}_off">Disabled</label>
+                                <a class="slide-button btn"></a>
+                            </span>
+
+                        </div>
+
+                    </div>
+
                     <div class="form-group">
                         <label class="control-label col-lg-3">
                             Discount Cards:
