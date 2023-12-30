@@ -25,6 +25,7 @@ function paytabs_error_log($msg, $severity)
     PrestaShopLogger::addLog($msg, $severity);
 }
 
+use PrestaShop\PrestaShop\Core\Domain\Order\CancellationActionType;
 class PayTabs_PayPage extends PaymentModule
 {
     private $_html = '';
@@ -67,10 +68,7 @@ class PayTabs_PayPage extends PaymentModule
             && $this->generate_transactions_table()
             && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
             && $this->registerHook('paymentReturn')
-            && $this->registerHook('actionOrderStatusUpdate');
-
-            /* Partial Refund hook */
-            // && $this->registerHook('actionProductCancel');
+            && $this->registerHook('actionProductCancel');
     }
 
 
@@ -623,44 +621,58 @@ class PayTabs_PayPage extends PaymentModule
         }
     }
 
-    public function hookActionOrderStatusUpdate($params)
+    /*
+    * This hook is called when a product is canceled in the order
+    * Used to implement (Standard/Partial) Refund
+    */
+    public function hookActionProductCancel($params)
     {
-        $order = new Order((int) $params['id_order']);
+        if ($params['action'] != CancellationActionType::STANDARD_REFUND && $params['action'] != CancellationActionType::PARTIAL_REFUND) {
+            return false;
+        }
+
+        $has_voucher = array_key_exists('voucher', $_POST['cancel_product']);
+        if ($has_voucher) {
+            return false;
+        }
+
+        $orderId = $params['order']->id;
+        $order = new Order((int) $orderId);
+
+        $order_detail_id = $params['id_order_detail'];
+        $cancel_quantity = $params['cancel_quantity'];
+        $order_detail = PayTabs_PayPage_Helper::getOrderDetail($order_detail_id);
+        
+        if (!$order_detail) {
+            PaytabsHelper::log("Refund Error: order detail [$order_detail] not found", 3);
+            Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
+            exit;
+        }
+
+        $refund_amount = $order_detail['unit_price_tax_incl'] * $cancel_quantity;
 
         if (Validate::isLoadedObject($order) && $order->module == $this->name) {
-
-            if ($params['oldOrderStatus']->id == Configuration::get('PS_OS_REFUND')){
-                $this->get('session')->getFlashBag()->add('error', "The refunded order cannot be changed");
+            $code = DB::getInstance()->getValue("SELECT payment_method FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture')");
+            $refundResult = $this->processRefund($order, $code, $refund_amount);
+            
+            if ( $refundResult !== true){
+                $this->get('session')->getFlashBag()->add('error', $refundResult);
                 Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
                 exit;
-            }
-
-            // Full-Refund
-
-            if ($params['newOrderStatus']->id == Configuration::get('PS_OS_REFUND')) {
-
-                $code = DB::getInstance()->getValue("SELECT payment_method FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "'");
-                $refundResult = $this->processRefund($order, $code);
-
-                if ( $refundResult !== true){
-                    $this->get('session')->getFlashBag()->add('error', $refundResult);
-                    Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
-                    exit;
-                }
             }
         }
     }
 
-    private function processRefund(Order $order, $code)
+    private function processRefund(Order $order, $code, $refund_amount)
     {   
-        $payment_refrence = DB::getInstance()->getRow("SELECT transaction_ref, transaction_amount FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture') ");
+        $tran_refrence = DB::getInstance()->getValue("SELECT transaction_ref FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture') ");
         $currency = new Currency((int) $order->id_currency);
 
         $pt_refundHolder = new PaytabsFollowupHolder();
         $pt_refundHolder
             ->set02Transaction(PaytabsEnum::TRAN_TYPE_REFUND, PaytabsEnum::TRAN_CLASS_ECOM)
-            ->set03Cart($order->id_cart, $currency->iso_code, $payment_refrence['transaction_amount'], "Admin Full Refund")
-            ->set30TransactionInfo($payment_refrence['transaction_ref'])
+            ->set03Cart($order->id_cart.'-'.time(), $currency->iso_code, $refund_amount, "Admin Partial Refund")
+            ->set30TransactionInfo($tran_refrence)
             ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
         $values = $pt_refundHolder->pt_build();
@@ -689,7 +701,7 @@ class PayTabs_PayPage extends PaymentModule
             ];
 
             if(!PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)){
-                PaytabsHelper::log("Refund success, But DB insert failed in " . PT_DB_TRANSACTIONS_TABLE . " table, [$order->id]", 3);
+                PaytabsHelper::log("Refund success, Paytabs table insert failed, [$order->id]", 3);
                 return true;
             }
 
@@ -701,15 +713,4 @@ class PayTabs_PayPage extends PaymentModule
             return "Refund Error: " . $message;
         }
     }
-
-    /* To be Made :: Partial Refund */
-    // public function hookActionProductCancel($params)
-    // {
-        // if ($params['action'] == CancellationActionType::STANDARD_REFUND ||
-        //      $params['action'] == CancellationActionType::PARTIAL_REFUND) 
-        // {
-
-        // }
-    // }
-
 }

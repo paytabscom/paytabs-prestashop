@@ -28,4 +28,12 @@ class PayTabs_PayPage_Helper
         }
         return true;
     }
+
+    public static function getOrderDetail($order_detail_id)
+    {
+        $tableName = _DB_PREFIX_ . 'order_detail';
+        $stmt = "SELECT * FROM $tableName WHERE id_order_detail = $order_detail_id;";
+        $result = DB::getInstance()->getRow($stmt);
+        return $result;
+    }
 }

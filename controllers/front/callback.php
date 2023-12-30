@@ -39,8 +39,10 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $transaction_type = @$result->tran_type;
         $response_code = @$result->response_code;
 
-        $amountPaid = $result->tran_total;
-        $cart_currency = $result->cart_currency;
+        $cart_amount = $result->cart_amount;
+        $tran_total  = $result->tran_total;
+
+        $amountPaid = $tran_total;
 
         if ($failed) {
             $logMsg = json_encode($result);
@@ -119,7 +121,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $this->module->validateOrder(
             (int) $cart->id,
             Configuration::get('PS_OS_PAYMENT'),
-            (float) $result->cart_amount,
+            (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
             $res_msg, // message
             ['transaction_id' => $transaction_ref, 'tran_type' => $transaction_type], // extra vars
@@ -134,12 +136,12 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             'payment_method' => $paymentType,
             'parent_transaction_ref' => '',
             'transaction_amount'   => $amountPaid,
-            'transaction_currency' => $cart_currency,
+            'transaction_currency' => $cart->id_currency,
             'transaction_type' => $transaction_type
         ];
 
         $order_id = $this->context->controller->module->currentOrder;
-
+        
         if(PayTabs_PayPage_Helper::save_payment_reference($order_id, $transaction_data)){
             PaytabsHelper::log("transaction saved success, order [{$order_id} - {$res_msg}]");
         }
