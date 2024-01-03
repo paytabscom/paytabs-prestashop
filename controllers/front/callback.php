@@ -118,7 +118,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         }
         if (!$authorized) {
             // die($this->module->_trans('This payment method is not available.'));
-            PrestaShopLogger::addLog('PayTabs: Authorization error', 3, null, 'Cart', null, true, null);
+            PrestaShopLogger::addLog('PayTabs: Authorization error', 2, null, 'Cart', $orderId, true, null);
         }
 
         /** @var CustomerCore $customer */

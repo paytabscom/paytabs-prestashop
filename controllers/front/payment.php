@@ -36,8 +36,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $success = $paypage->success;
     $message = @$paypage->message;
 
-    $_logMsg = 'PayTabs: ' . json_encode($paypage);
-    PrestaShopLogger::addLog($_logMsg, ($paypage->success ? 1 : 3), null, 'Cart', $cart->id, true, $cart->id_customer);
+    if ($success) {
+      $_logMsg = "PayTabs: PayPge created, tran {$paypage->tran_ref}";
+    } else {
+      $_logMsg = 'PayTabs: ' . json_encode($paypage);
+    }
+    PrestaShopLogger::addLog($_logMsg, ($success ? 1 : 3), null, 'Cart', $cart->id, true, $cart->id_customer);
 
     //
 
