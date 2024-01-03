@@ -237,18 +237,20 @@
                     <div class="form-group">
 
                         <label class="control-label col-lg-3">
-                            Discount Enable
+                            Card Discounts (Beta)
                         </label>
 
                         <div class="col-lg-9">
 
                             <span class="switch prestashop-switch fixed-width-lg">
-                                <input type="radio" name="discount_enabled_{$code}" id="discount_enabled_{$code}_on" value="1" {if (Configuration::get("discount_enabled_$code"))} checked="checked" {/if}>
+                                <input type="radio" name="discount_enabled_{$code}" class="pt-discount-switch" id="discount_enabled_{$code}_on" value="1" {if (Configuration::get("discount_enabled_$code"))} checked="checked" {/if}>
                                 <label for="discount_enabled_{$code}_on">Enabled</label>
-                                <input type="radio" name="discount_enabled_{$code}" id="discount_enabled_{$code}_off" value="" {if (!Configuration::get("discount_enabled_$code"))} checked="checked" {/if}>
+                                <input type="radio" name="discount_enabled_{$code}" class="pt-discount-switch" id="discount_enabled_{$code}_off" value="" {if (!Configuration::get("discount_enabled_$code"))} checked="checked" {/if}>
                                 <label for="discount_enabled_{$code}_off">Disabled</label>
                                 <a class="slide-button btn"></a>
                             </span>
+                            <span class="help-block">Apply a payment gateway discounts on cards matching the blow defined list.</span>
+                            <p class="text-danger" id="discount_enabled_{$code}_warning">The paid amount will be considered as the order total, discount value will be counted on PayTabs side only.</p>
 
                         </div>
 
@@ -267,6 +269,7 @@
                                 </label>
                                 <div class="col-lg-3">
                                     <input type="text" class="form-control" name="discount_cards_input_{$code}" value="">
+                                    <span class="help-block">Digits only, length between 4 and 10, Separated by commas, (e.g 5200,441123).</span>
                                 </div>
                                 <div class="col-lg-5">
                                     <div class="row">
@@ -363,10 +366,22 @@
 <script>
     
     let addDiscountBtns = document.getElementsByClassName('add-discount');
+    let discountSwitches = document.getElementsByClassName('pt-discount-switch');
     
     for (let i = 0; i < addDiscountBtns.length; i++) {
         let btn = addDiscountBtns[i];
-        btn.addEventListener('click', (e) => addDiscountRow(btn))
+        btn.addEventListener('click', (e) => addDiscountRow(btn));
+    }
+
+    for (let i = 0; i < discountSwitches.length; i++) {
+        let tag = discountSwitches[i];
+        tag.addEventListener('change', (e) => {
+            $('#' + tag.name + '_warning').toggle(tag.value == '1');
+        });
+        if (tag.checked) {
+            // $(tag).trigger('change');
+            tag.dispatchEvent(new Event("change"));
+        }
     }
 
     function addDiscountRow(btn)
