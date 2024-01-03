@@ -33,13 +33,16 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $is_on_hold = $result->is_on_hold;
         $is_pending = $result->is_pending;
         $res_msg = $result->message;
-        $orderId = @$result->reference_no;
+        $cartId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
         $pt_prev_tran_ref = @$result->previous_tran_ref;
         $transaction_type = @$result->tran_type;
         $response_code = @$result->response_code;
 
-        $amountPaid = $result->cart_amount;
+        $cart_amount = $result->cart_amount;
+        $tran_total  = $result->tran_total;
+
+        $amountPaid = $tran_total;
 
         if ($failed) {
             $logMsg = json_encode($result);
@@ -48,7 +51,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 2,
                 null,
                 'Cart',
-                $orderId,
+                $cartId,
                 true,
                 null
             );
@@ -64,7 +67,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 2,
                 null,
                 'Cart',
-                $orderId,
+                $cartId,
                 true,
                 null
             );
@@ -80,7 +83,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 3,
                 null,
                 'Cart',
-                $orderId,
+                $cartId,
                 true,
                 null
             );
@@ -91,7 +94,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         /**
          * Get cart id from response
          */
-        $cart = new Cart((int) $orderId);
+        $cart = new Cart((int) $cartId);
 
         /**
          * Verify if this payment module is authorized
@@ -126,6 +129,22 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             false,
             $customer->secure_key
         );
+
+        $transaction_data = [
+            'status' => $success,
+            'transaction_ref' => $transaction_ref,
+            'payment_method' => $paymentType,
+            'parent_transaction_ref' => '',
+            'transaction_amount'   => $amountPaid,
+            'transaction_currency' => $cart->id_currency,
+            'transaction_type' => $transaction_type
+        ];
+
+        $order_id = $this->context->controller->module->currentOrder;
+        
+        if(PayTabs_PayPage_Helper::save_payment_reference($order_id, $transaction_data)){
+            PaytabsHelper::log("transaction saved success, order [{$order_id} - {$res_msg}]");
+        }
     }
 
 

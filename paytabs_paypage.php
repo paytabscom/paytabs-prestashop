@@ -14,14 +14,18 @@ if (!defined('_PS_VERSION_')) {
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
 define('PAYTABS_PAYPAGE_VERSION', '3.8.0');
+define('PT_DB_TRANSACTIONS_TABLE', _DB_PREFIX_ . 'pt_transactions');
+
 
 require_once __DIR__ . '/paytabs_core.php';
+require_once __DIR__ . '/helpers/paytabs_paypage_helper.php';
 
 function paytabs_error_log($msg, $severity)
 {
     PrestaShopLogger::addLog($msg, $severity);
 }
 
+use PrestaShop\PrestaShop\Core\Domain\Order\CancellationActionType;
 class PayTabs_PayPage extends PaymentModule
 {
     private $_html = '';
@@ -61,8 +65,10 @@ class PayTabs_PayPage extends PaymentModule
     public function install()
     {
         return parent::install()
+            && $this->generate_transactions_table()
             && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
-            && $this->registerHook('paymentReturn');
+            && $this->registerHook('paymentReturn')
+            && $this->registerHook('actionProductCancel');
     }
 
 
@@ -76,6 +82,26 @@ class PayTabs_PayPage extends PaymentModule
         return parent::uninstall();
     }
 
+
+    public function generate_transactions_table()
+    {
+        return DB::getInstance()->execute("
+            CREATE TABLE IF NOT EXISTS `" . PT_DB_TRANSACTIONS_TABLE . "` (
+            `id` INT(11) NOT NULL AUTO_INCREMENT,
+            `order_id` INT(11) NOT NULL,
+            `payment_method` VARCHAR(32) NOT NULL,
+            `transaction_ref` VARCHAR(64) NOT NULL,
+            `parent_ref` VARCHAR(64)  NULL,
+            `transaction_type` VARCHAR(32) NOT NULL,
+            `transaction_status` TINYINT(1) NOT NULL,
+            `transaction_amount` DECIMAL(15,4) NOT NULL,
+            `transaction_currency` VARCHAR(8) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`id`)
+            );
+        ");
+    }
 
     /**
      * Returns a string containing the HTML necessary to
@@ -592,6 +618,99 @@ class PayTabs_PayPage extends PaymentModule
                 'redirect' => $url
             ]);
             $controller->setTemplate('payment_error.tpl');
+        }
+    }
+
+    /*
+    * This hook is called when a product is canceled in the order
+    * Used to implement (Standard/Partial) Refund
+    */
+    public function hookActionProductCancel($params)
+    {
+        if ($params['action'] != CancellationActionType::STANDARD_REFUND && $params['action'] != CancellationActionType::PARTIAL_REFUND) {
+            return false;
+        }
+
+        $has_voucher = array_key_exists('voucher', $_POST['cancel_product']);
+        if ($has_voucher) {
+            return false;
+        }
+
+        $orderId = $params['order']->id;
+        $order = new Order((int) $orderId);
+
+        $order_detail_id = $params['id_order_detail'];
+        $cancel_quantity = $params['cancel_quantity'];
+        $order_detail = PayTabs_PayPage_Helper::getOrderDetail($order_detail_id);
+        
+        if (!$order_detail) {
+            PaytabsHelper::log("Refund Error: order detail [$order_detail] not found", 3);
+            Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
+            exit;
+        }
+
+        $refund_amount = $order_detail['unit_price_tax_incl'] * $cancel_quantity;
+
+        if (Validate::isLoadedObject($order) && $order->module == $this->name) {
+            $code = DB::getInstance()->getValue("SELECT payment_method FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture')");
+            $refundResult = $this->processRefund($order, $code, $refund_amount);
+            
+            if ( $refundResult !== true){
+                $this->get('session')->getFlashBag()->add('error', $refundResult);
+                Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
+                exit;
+            }
+        }
+    }
+
+    private function processRefund(Order $order, $code, $refund_amount)
+    {   
+        $tran_refrence = DB::getInstance()->getValue("SELECT transaction_ref FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture') ");
+        $currency = new Currency((int) $order->id_currency);
+
+        $pt_refundHolder = new PaytabsFollowupHolder();
+        $pt_refundHolder
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_REFUND, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set03Cart($order->id_cart.'-'.time(), $currency->iso_code, $refund_amount, "Admin Partial Refund")
+            ->set30TransactionInfo($tran_refrence)
+            ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
+
+        $values = $pt_refundHolder->pt_build();
+
+        $endpoint = Configuration::get("endpoint_$code");
+        $merchant_id = Configuration::get("profile_id_$code");
+        $merchant_key = Configuration::get("server_key_$code");
+
+        $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
+        $refundRes = $paytabsApi->request_followup($values);
+
+        $tran_ref = @$refundRes->tran_ref;
+        $success = $refundRes->success;
+        $message = $refundRes->message;
+
+        if ($success) {
+
+            $transaction_data = [
+                'status' => $success,
+                'transaction_ref' => $tran_ref,
+                'parent_transaction_ref' => $values['tran_ref'],
+                'transaction_amount' => $values['cart_amount'],
+                'transaction_type' => $values['tran_type'],
+                'transaction_currency' => $values['cart_currency'],
+                'payment_method' => $code
+            ];
+
+            if(!PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)){
+                PaytabsHelper::log("Refund success, Paytabs table insert failed, [$order->id]", 3);
+                return true;
+            }
+
+            PaytabsHelper::log("Refund success, order [{$order->id} - {$message}]");
+            return true;
+
+        } else {
+            PaytabsHelper::log("Refund failed, {$order->id} - {$message}", 3);
+            return "Refund Error: " . $message;
         }
     }
 }
