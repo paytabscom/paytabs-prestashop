@@ -5,6 +5,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
     public function postProcess()
     {
+        PaytabsHelper::log("Callback triggered", 1);
+
         $paymentKey = Tools::getValue('p');
 
         if ($paymentKey === false) {
@@ -16,6 +18,9 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $endpoint = Configuration::get("endpoint_{$paymentType}");
         $merchant_id = Configuration::get("profile_id_{$paymentType}");
         $merchant_key = Configuration::get("server_key_{$paymentType}");
+
+        // Should use Admin control
+        $discount_enabled = Configuration::get("discount_enabled_$paymentType");
 
         $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 
@@ -39,7 +44,15 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $transaction_type = @$result->tran_type;
         $response_code = @$result->response_code;
 
-        $amountPaid = $result->cart_amount;
+        $cart_amount = $result->cart_amount;
+        $tran_total  = $result->tran_total;
+
+        /**
+         * The actual paid amount in PT
+         * By default it must be the tran_total
+         * Except in the discount card mode: where it will be the cart_amount
+         */
+        $amountPaid = $tran_total;
 
         if ($failed) {
             $logMsg = json_encode($result);
@@ -105,15 +118,43 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         }
         if (!$authorized) {
             // die($this->module->_trans('This payment method is not available.'));
-            PrestaShopLogger::addLog('PayTabs: Authorization error', 3, null, 'Cart', null, true, null);
+            PrestaShopLogger::addLog('PayTabs: Authorization error', 2, null, 'Cart', $orderId, true, null);
         }
 
         /** @var CustomerCore $customer */
         $customer = new Customer($cart->id_customer);
 
+        // PT Discount logic
+
+        if ($discount_enabled) {
+            $discountPatterns = json_decode(Configuration::get("discount_cards_{$paymentType}"));
+            $discountTypes = json_decode(Configuration::get("discount_type_$paymentType"));
+            $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
+
+            $hasDiscounted = PaytabsHelper::hasDiscountApplied($discountPatterns, $discountAmounts, $discountTypes, $result);
+            if ($hasDiscounted) {
+                $amountPaid = $cart_amount;
+
+                PrestaShopLogger::addLog(
+                    "PayTabs ({$paymentType}): Discount detected, {$transaction_ref}, Original amount: {$cart_amount}, Paid amount: {$tran_total}",
+                    2,
+                    null,
+                    'Cart',
+                    $orderId,
+                    true,
+                    null
+                );
+            }
+        }
+
         /**
          * Place the order
          */
+
+        $extras = [
+            'transaction_id' => $transaction_ref,
+            'tran_type' => $transaction_type
+        ];
 
         $this->module->validateOrder(
             (int) $cart->id,
@@ -121,7 +162,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
             $res_msg, // message
-            ['transaction_id' => $transaction_ref, 'tran_type' => $transaction_type], // extra vars
+            $extras, // extra vars
             (int) $cart->id_currency,
             false,
             $customer->secure_key
