@@ -278,7 +278,7 @@ abstract class PaytabsHelper
         $_idxs = implode(',', $applied_discounts);
         PaytabsHelper::log("Discount flag detected, Amount: {$cart_amount} >> {$tran_total}, Indexes [{$_idxs}]", 1);
 
-        for ($i = 0; $i < count($applied_discounts); $i++) {
+        foreach ($applied_discounts as $i) {
             $discount_amount = $amounts[$i];
             $discount_type = $types[$i];
 
