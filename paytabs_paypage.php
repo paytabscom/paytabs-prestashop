@@ -32,7 +32,8 @@ class PayTabs_PayPage extends PaymentModule
     private $_postErrors = array();
 
     public $address;
-
+    public static $counter = 1;
+    public static $shipping_refunded = false;
     /**
      * PayTabs constructor.
      *
@@ -68,7 +69,10 @@ class PayTabs_PayPage extends PaymentModule
             && $this->generate_transactions_table()
             && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
             && $this->registerHook('paymentReturn')
-            && $this->registerHook('actionProductCancel');
+            
+            && ( PS_VERSION_IS_NEW ? $this->registerHook('actionProductCancel') :
+                ( $this->registerHook('actionProductCancel') && $this->registerHook('actionOrderSlipAdd') )
+            );            
     }
 
 
@@ -621,50 +625,86 @@ class PayTabs_PayPage extends PaymentModule
         }
     }
 
-    /*
-    * This hook is called when a product is canceled in the order
-    * Used to implement (Standard/Partial) Refund
-    */
     public function hookActionProductCancel($params)
     {
-        if ($params['action'] != CancellationActionType::STANDARD_REFUND && $params['action'] != CancellationActionType::PARTIAL_REFUND) {
-            return false;
+        if (PS_VERSION_IS_NEW) {
+
+            $refundType = $this->getRefundType($params['action']);
+
+            if ( ($refundType != 'standard' && $refundType != 'partial') || $this->hasVoucher()) {
+                return false;
+            }    
+        }
+        
+        $id_order_detail = $params['id_order_detail'];
+        if (PS_VERSION_IS_NEW) {
+            $cancel_quantity = $params['cancel_quantity'];
+            if ($refundType == 'standard') {
+                $refund_amount = $this->getRefundAmount($id_order_detail, $cancel_quantity);
+            } else { 
+                $refund_amount = $params['cancel_amount'];
+            }    
+        } else {
+            $cancel_quantity = $_POST['cancelQuantity'][$id_order_detail];
+            $refund_amount = $this->getRefundAmount($id_order_detail, $cancel_quantity);
         }
 
-        $has_voucher = array_key_exists('voucher', $_POST['cancel_product']);
-        if ($has_voucher) {
-            return false;
-        }
+        $refund_amount += $this->getShippingAmount($refundType, $params);
 
         $orderId = $params['order']->id;
-        $order = new Order((int) $orderId);
+        $refundResult = $this->processRefund($orderId, $refund_amount);
 
-        $order_detail_id = $params['id_order_detail'];
-        $cancel_quantity = $params['cancel_quantity'];
-        $order_detail = PayTabs_PayPage_Helper::getOrderDetail($order_detail_id);
-        
-        if (!$order_detail) {
-            PaytabsHelper::log("Refund Error: order detail [$order_detail] not found", 3);
+        if ( $refundResult !== true){
+            if (PS_VERSION_IS_NEW) {
+                $this->get('session')->getFlashBag()->add('error', $refundResult);
+            }
             Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
             exit;
         }
 
-        $refund_amount = $order_detail['unit_price_tax_incl'] * $cancel_quantity;
 
-        if (Validate::isLoadedObject($order) && $order->module == $this->name) {
-            $code = DB::getInstance()->getValue("SELECT payment_method FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture')");
-            $refundResult = $this->processRefund($order, $code, $refund_amount);
-            
-            if ( $refundResult !== true){
-                $this->get('session')->getFlashBag()->add('error', $refundResult);
-                Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
-                exit;
-            }
-        }
     }
 
-    private function processRefund(Order $order, $code, $refund_amount)
+
+    public function hookActionOrderSlipAdd($params)
+    {
+        if (PS_VERSION_IS_NEW || !array_key_exists('partialRefund', $_POST) || $this->hasVoucher()){
+            return;
+        }
+
+        $product_list = $params['productList'];
+        $total_amount = 0;
+
+        foreach ($product_list as $key => $product){
+            $total_amount += $product['amount'];
+        }
+
+        // add shipping amount
+        $total_amount += $this->getShippingAmount();
+
+        $orderId = $params['order']->id;
+        $refundResult = $this->processRefund($orderId, $total_amount);
+            
+        if ( $refundResult !== true){
+            if (PS_VERSION_IS_NEW) {
+                $this->get('session')->getFlashBag()->add('error', $refundResult);
+            }
+            Tools::redirectAdmin(Context::getContext()->link->getAdminLink('AdminOrders',true));
+            exit;
+        }
+
+    }
+
+    private function processRefund($orderId, $refund_amount)
     {   
+        $order = new Order((int) $orderId);
+
+        if (! Validate::isLoadedObject($order) && $order->module != $this->name) {
+            return;
+        }
+
+        $code = DB::getInstance()->getValue("SELECT payment_method FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture')");
+
         $tran_refrence = DB::getInstance()->getValue("SELECT transaction_ref FROM " . PT_DB_TRANSACTIONS_TABLE . " WHERE order_id = '" . (int) $order->id . "' AND (transaction_type='sale' or transaction_type='capture') ");
         $currency = new Currency((int) $order->id_currency);
 
@@ -712,5 +752,66 @@ class PayTabs_PayPage extends PaymentModule
             PaytabsHelper::log("Refund failed, {$order->id} - {$message}", 3);
             return "Refund Error: " . $message;
         }
+    }
+
+    private function hasVoucher()
+    {
+        if(PS_VERSION_IS_NEW){
+            $has_voucher = array_key_exists('voucher', $_POST['cancel_product']);
+        }else{
+            $has_voucher = false;
+            if (array_key_exists('generateDiscountRefund', $_POST) || array_key_exists('generateDiscount', $_POST)){
+                $has_voucher = true;
+            }
+        }
+        
+        if ($has_voucher) {
+            return true;
+        }
+
+        return false;
+    }
+
+    // Only with version >= 1.7
+    private function getRefundType($action)
+    {
+        $type = false;
+        switch ($action) {
+            case CancellationActionType::STANDARD_REFUND:
+                $type = 'standard';
+                break;
+            case CancellationActionType::PARTIAL_REFUND:
+                $type = 'partial';
+                break;
+        }
+        return $type;
+    }
+
+    private function getRefundAmount($id_order_detail, $cancel_quantity)
+    {
+        $order_detail = new OrderDetail((int) $id_order_detail);
+        $refund_amount = $order_detail->unit_price_tax_incl * $cancel_quantity;
+        return $refund_amount;
+    }
+
+    private function getShippingAmount($refundType=null, $params=null)
+    {
+        $refundShipping = 0;
+
+        if (PS_VERSION_IS_NEW) {
+            if ($refundType == 'standard' && array_key_exists('shipping', $_POST['cancel_product']) && !self::$shipping_refunded) {
+                $totalOrderShipping = $params['order']->total_shipping;
+                $refundShipping = $totalOrderShipping - (float) PayTabs_PayPage_Helper::getShippedAmount($params['order']->id);
+                self::$shipping_refunded = true;
+            }
+            else if ($refundType == 'partial' && !self::$shipping_refunded) {
+                $refundShipping = (float) $_POST['cancel_product']['shipping_amount'];
+                self::$shipping_refunded = true;
+            }
+        } else {
+            $refundShipping = (float) $_POST['partialRefundShippingCost'];
+        }
+
+        return $refundShipping;
     }
 }
