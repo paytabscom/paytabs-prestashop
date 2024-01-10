@@ -284,7 +284,7 @@ abstract class PaytabsHelper
 
             $valid_discount = self::isValidDiscount($discount_type, $discount_amount, $cart_amount, $tran_total);
             if ($valid_discount) {
-                return true;
+                return $i;
             }
         }
 

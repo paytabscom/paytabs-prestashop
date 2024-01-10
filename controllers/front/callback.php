@@ -132,7 +132,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             $discountAmounts = json_decode(Configuration::get("discount_amount_$paymentType"));
 
             $hasDiscounted = PaytabsHelper::hasDiscountApplied($discountPatterns, $discountAmounts, $discountTypes, $result);
-            if ($hasDiscounted) {
+            if ($hasDiscounted !== false) {
                 $amountPaid = $cart_amount;
 
                 PrestaShopLogger::addLog(
@@ -167,11 +167,56 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             false,
             $customer->secure_key
         );
+
+        /*
+        * Add discount to order
+        */ 
+        if ($discount_enabled && $hasDiscounted !== false) {
+            $index = $hasDiscounted;
+            $orderId = $this->context->controller->module->currentOrder;
+            $order = new Order((int)$orderId);
+            $discountType = $discountTypes[$index];
+            $discountAmount = (float) $cart_amount - (float) $tran_total;
+            $this->addCartRule($order, $discountType, $discountAmount);
+        }
+        
     }
 
 
     public function display()
     {
         return;
+    }
+
+    private function addCartRule(Order $order, $discountType, $discountAmount)
+    {
+        $cart_rule = new CartRule();
+        $cart_rule->code = CartRule::BO_ORDER_CODE_PREFIX . $order->id_cart;
+        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 
+                $this->trans('Card Discount order #'.$order->id, [], 'Admin.Orderscustomers.Feature');
+    
+        $cart_rule->id_customer = $order->id_customer;
+        $cart_rule->date_from = date('Y-m-d H:i:s', time());
+        $cart_rule->date_to = date('Y-m-d H:i:s', time() + 24 * 36000);
+        $cart_rule->active = true;
+
+        if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
+            $cart_rule->reduction_percent = (float) $discountAmount;
+        } else if ($discountType === PaytabsEnum::DISCOUNT_FIXED) {
+            $cart_rule->reduction_amount = (float) $discountAmount;
+            $cart_rule->reduction_tax = true;
+        }
+
+        try {
+            if (!$cart_rule->add()) {
+                PaytabsHelper::log('An error occurred during the CartRule creation', 3);
+            }
+            $newCartRuleId = $cart_rule->id;
+            $order->addCartRule($newCartRuleId, 'test-'.time(), ['tax_incl' => $discountAmount,'tax_excl' => 0], $order->invoice_number);
+        } catch (PrestaShopException $e) {
+
+            PaytabsHelper::log('An error occurred during the CartRule creation', 3);
+        }
+        
     }
 }
