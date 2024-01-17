@@ -29,7 +29,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $request_param = $this->prepare_order($cart, $paymentKey);
 
-
+    $iframe = ($this->getConfig('payment_form') == 'iframe');
+    file_put_contents('payment-form' , json_encode($iframe));
     // Create paypage
     $paypage = $paytabsApi->create_pay_page($request_param);
 
@@ -46,8 +47,17 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     //
 
     if ($success) {
+
       $payment_url = $paypage->payment_url;
-      Tools::redirect($payment_url);
+      if ($iframe) {
+        $this->context->smarty->assign([
+          'payment_url' => $payment_url,
+        ]);
+        $this->setTemplate('module:paytabs_paypage/views/templates/front/payment_framed.tpl');
+      }else{
+        Tools::redirect($payment_url);
+      }
+      
     } else {
       $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
@@ -124,6 +134,9 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     //
 
+    $iframe = ($this->getConfig('payment_form') == 'iframe');
+
+
     // $country_details = PaytabsHelper::getCountryDetails($invoice_country->iso_code);
 
     $phone_number = PaytabsHelper::getNonEmpty(
@@ -186,6 +199,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set06HideShipping($hide_shipping)
       ->set07URLs($return_url, $callback_url)
       ->set08Lang($lang_)
+      ->set09Framed($iframe, 'top')
       ->set11ThemeConfigId($config_id)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
