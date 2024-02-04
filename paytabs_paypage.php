@@ -109,6 +109,7 @@ class PayTabs_PayPage extends PaymentModule
             if (!count($this->_postErrors)) {
 
                 $this->_postProcess();
+                
             } else {
 
                 foreach ($this->_postErrors as $err) {
@@ -118,8 +119,6 @@ class PayTabs_PayPage extends PaymentModule
                 $this->context->smarty->assign([
                     'errors_html' => $this->_html,
                 ]);
-
-                return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
             }
         }
 
@@ -131,9 +130,11 @@ class PayTabs_PayPage extends PaymentModule
     {
         if (!Tools::isSubmit('btnSubmit')) return;
 
-        foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+        // foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
 
-            $code = $method['name'];
+            // $code = $method['name'];
+            $code = Tools::getValue('payment_method');
+            $method =  PaytabsHelper::getPaymentMethod($code);
 
             if (Tools::getValue("active_{$code}")) {
                 if (!Tools::getValue("endpoint_{$code}")) {
@@ -155,11 +156,11 @@ class PayTabs_PayPage extends PaymentModule
                 $discounts = Tools::getValue("discount_cards_{$code}");
                 $amounts = Tools::getValue("discount_amount_{$code}");
 
-                if (!$discounts || !$amounts || count($discounts) < 1) continue;
+                if (!$discounts || !$amounts || count($discounts) < 1) return;
 
                 if (count($discounts) != count($amounts)) {
                     $this->_postErrors[] = "{$method['title']}: Invalid (cards, amounts) map.";
-                    continue;
+                    return;
                 }
 
                 foreach ($discounts as $key => $card) {
@@ -175,7 +176,7 @@ class PayTabs_PayPage extends PaymentModule
                     }
                 }
             }
-        }
+        // }
     }
 
 
@@ -183,10 +184,10 @@ class PayTabs_PayPage extends PaymentModule
     {
         if (Tools::isSubmit('btnSubmit')) {
 
-            foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+            // foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
 
-                $code = $method['name'];
-
+                $code = Tools::getValue('payment_method');
+    
                 Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
 
                 Configuration::updateValue("endpoint_{$code}", Tools::getValue("endpoint_{$code}"));
@@ -222,7 +223,7 @@ class PayTabs_PayPage extends PaymentModule
 
                 Configuration::updateValue("alt_currency_enable_{$code}", (bool)Tools::getValue("alt_currency_enable_{$code}"));
                 Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
-            }
+            // }
         }
         Tools::redirectAdmin("./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name&success");
     }

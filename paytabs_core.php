@@ -20,6 +20,15 @@ abstract class PaytabsHelper
         return PaytabsApi::PAYMENT_TYPES[$key]['name'];
     }
 
+    static function getPaymentMethod($name)
+    {
+        foreach(PaytabsApi::PAYMENT_TYPES as $k => $v){
+            if($v['name'] == $name){
+                return $v;
+            }
+        }
+    }
+
     static function paymentAllowed($code, $currencyCode)
     {
         $row = null;
