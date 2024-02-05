@@ -250,7 +250,6 @@
                                 <a class="slide-button btn"></a>
                             </span>
                             <span class="help-block">Apply a payment gateway discounts on cards matching the blow defined list.</span>
-                            <p class="text-danger" id="discount_enabled_{$code}_warning">The paid amount will be considered as the order total, discount value will be counted on PayTabs side only.</p>
 
                         </div>
 

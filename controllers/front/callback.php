@@ -170,7 +170,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         /*
         * Add discount to order
-        */ 
+        */
         if ($discount_enabled && $hasDiscounted !== false) {
             $index = $hasDiscounted;
             $orderId = $this->context->controller->module->currentOrder;
@@ -179,7 +179,6 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             $discountAmount = (float) $cart_amount - (float) $tran_total;
             $this->addCartRule($order, $discountType, $discountAmount);
         }
-        
     }
 
 
@@ -192,9 +191,9 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
     {
         $cart_rule = new CartRule();
         $cart_rule->code = CartRule::BO_ORDER_CODE_PREFIX . $order->id_cart;
-        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 
-                $this->trans('Card Discount order #'.$order->id, [], 'Admin.Orderscustomers.Feature');
-    
+        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] =
+            $this->trans('Card Discount order #' . $order->id, [], 'Admin.Orderscustomers.Feature');
+
         $cart_rule->id_customer = $order->id_customer;
         $cart_rule->date_from = date('Y-m-d H:i:s', time());
         $cart_rule->date_to = date('Y-m-d H:i:s', time() + 24 * 36000);
@@ -212,11 +211,10 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 PaytabsHelper::log('An error occurred during the CartRule creation', 3);
             }
             $newCartRuleId = $cart_rule->id;
-            $order->addCartRule($newCartRuleId, 'test-'.time(), ['tax_incl' => $discountAmount,'tax_excl' => 0], $order->invoice_number);
+            $order->addCartRule($newCartRuleId, 'test-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => 0], $order->invoice_number);
         } catch (PrestaShopException $e) {
 
             PaytabsHelper::log('An error occurred during the CartRule creation', 3);
         }
-        
     }
 }
