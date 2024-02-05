@@ -173,8 +173,11 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         */
         if ($discount_enabled && $hasDiscounted !== false) {
             $index = $hasDiscounted;
-            $orderId = $this->context->controller->module->currentOrder;
-            $order = new Order((int)$orderId);
+
+            // $orderId = $this->context->controller->module->currentOrder;
+            // $order = new Order((int)$orderId);
+            $order = Order::getByCartId($orderId);
+
             $discountType = $discountTypes[$index];
             $discountAmount = (float) $cart_amount - (float) $tran_total;
             $this->addCartRule($order, $discountType, $discountAmount);
@@ -196,8 +199,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         $cart_rule->id_customer = $order->id_customer;
         $cart_rule->date_from = date('Y-m-d H:i:s', time());
-        $cart_rule->date_to = date('Y-m-d H:i:s', time() + 24 * 36000);
-        $cart_rule->active = true;
+        $cart_rule->date_to = date('Y-m-d H:i:s', time() + 10);
+        $cart_rule->active = false;
 
         if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
             $cart_rule->reduction_percent = (float) $discountAmount;
@@ -208,13 +211,14 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         try {
             if (!$cart_rule->add()) {
-                PaytabsHelper::log('An error occurred during the CartRule creation', 3);
+                PaytabsHelper::log("CartRule could not be added, Order {$order->id}", 3);
+            } else {
+                $newCartRuleId = $cart_rule->id;
+                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => 0], $order->invoice_number);
             }
-            $newCartRuleId = $cart_rule->id;
-            $order->addCartRule($newCartRuleId, 'test-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => 0], $order->invoice_number);
         } catch (PrestaShopException $e) {
 
-            PaytabsHelper::log('An error occurred during the CartRule creation', 3);
+            PaytabsHelper::log("CartRule creation error, Order {$order->id}", 3);
         }
     }
 }
