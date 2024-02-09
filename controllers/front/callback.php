@@ -180,6 +180,10 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
             $discountType = $discountTypes[$index];
             $discountAmount = (float) $cart_amount - (float) $tran_total;
+            if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
+                $discountAmount = $discountAmounts[$index];
+            }
+    
             $this->addCartRule($order, $discountType, $discountAmount);
         }
     }
@@ -194,9 +198,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
     {
         $cart_rule = new CartRule();
         $cart_rule->code = CartRule::BO_ORDER_CODE_PREFIX . $order->id_cart;
-        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] =
-            $this->trans('Card Discount order #' . $order->id, [], 'Admin.Orderscustomers.Feature');
-
+        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 'Paytabs discount order #'.$order->id;
         $cart_rule->id_customer = $order->id_customer;
         $cart_rule->date_from = date('Y-m-d H:i:s', time());
         $cart_rule->date_to = date('Y-m-d H:i:s', time() + 10);
@@ -214,10 +216,10 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 PaytabsHelper::log("CartRule could not be added, Order {$order->id}", 3);
             } else {
                 $newCartRuleId = $cart_rule->id;
-                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => 0], $order->invoice_number);
+                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => ($discountAmount - ($discountAmount * 0.14))], $order->invoice_number);
+                $order->update();
             }
         } catch (PrestaShopException $e) {
-
             PaytabsHelper::log("CartRule creation error, Order {$order->id}", 3);
         }
     }
