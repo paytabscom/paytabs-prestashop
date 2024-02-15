@@ -5,15 +5,16 @@ class PayTabs_PayPageIpnModuleFrontController extends ModuleFrontController
 
     public function postProcess()
     {
+        header("HTTP/1.1 200 OK");
+        header('Content-Type: application/json');
+        echo json_encode(array('status' => 'success'));
+
+        //
+
         PaytabsHelper::log("IPN triggered", 1);
 
         $ipn_data = PaytabsHelper::read_ipn_response();
-
-        if (PaytabsEnum::TranIsPaymentComplete($ipn_data)) {
-            return $this->handle_ipn($ipn_data);
-        } else {
-            PaytabsHelper::log("Payment is not complete", 1);
-        }
+        return $this->handle_ipn($ipn_data);
     }
 
     private function handle_ipn($ipn_data)
@@ -34,12 +35,14 @@ class PayTabs_PayPageIpnModuleFrontController extends ModuleFrontController
         $paytabsApi = $this->getPaytabsInstance($paymentType);
         $response_data = $paytabsApi->read_response(true);
 
-        $ipn_enable = Configuration::get("ipn_enable_{$paymentType}");
+        // TO-DO (after adding config option)
 
-        if (!$ipn_enable) {
-            PaytabsHelper::log("IPN handling is disabled, {$order->id}", 2);
-            return;
-        }
+        // $ipn_enable = Configuration::get("ipn_enable_{$paymentType}");
+
+        // if (!$ipn_enable) {
+            // PaytabsHelper::log("IPN handling is disabled, {$order->id}", 2);
+            // return;
+        // }
 
         $tran_type = strtolower($response_data->tran_type);
 
@@ -50,6 +53,7 @@ class PayTabs_PayPageIpnModuleFrontController extends ModuleFrontController
             case PaytabsEnum::TRAN_TYPE_CAPTURE:
                 if ($pt_success) {
                     $this->successTransaction($order, $tran_type);
+                    $this->checkPartialCapture($order, $ipn_data);
                 } else {
                     $this->failedTransaction($order, $tran_type, $pt_message);
                 }
@@ -62,6 +66,7 @@ class PayTabs_PayPageIpnModuleFrontController extends ModuleFrontController
                 } else {
                     $this->failedTransaction($order, $tran_type, $pt_message);
                 }
+                $order->save();
                 break;
             default:
                 PaytabsHelper::log("IPN does not recognize the Action {$tran_type}", 2);
@@ -89,12 +94,12 @@ class PayTabs_PayPageIpnModuleFrontController extends ModuleFrontController
     private function successTransaction($order, $tran_type)
     {
         $success_status = "";
-        if ($tran_type == 'void') {
+        if (PaytabsEnum::TranIsVoid($tran_type)) {
             $success_status = Configuration::get('PS_OS_CANCELED');
-        } elseif ($tran_type == 'capture') {
+        } elseif (PaytabsEnum::TranIsCapture($tran_type)) {
             $success_status = Configuration::get('PS_OS_PAYMENT');
         }
-        file_put_contents('hanlde-ipn', ' success transaction method : '. $tran_type . $success_status, FILE_APPEND);
+        
         $order->setCurrentState($success_status);
         PaytabsHelper::log( ucfirst($tran_type) . " done, $order->id", 1);
     }
@@ -106,5 +111,12 @@ class PayTabs_PayPageIpnModuleFrontController extends ModuleFrontController
         $merchant_key = Configuration::get("server_key_{$paymentType}");
 
         return PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
+    }
+
+    private function checkPartialCapture($order, $ipn_data)
+    {
+        if ($order->getTotalPaid() != $ipn_data->tran_total) {
+            PaytabsHelper::log( "Order is partially captured {$order->id} - {$ipn_data->tran_total} ", 1);
+        }
     }
 }
