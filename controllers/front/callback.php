@@ -198,11 +198,15 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
     {
         $cart_rule = new CartRule();
         $cart_rule->code = CartRule::BO_ORDER_CODE_PREFIX . $order->id_cart;
-        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 'Paytabs discount order #'.$order->id;
+        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 'Card Discount order #'.$order->id;
         $cart_rule->id_customer = $order->id_customer;
+        $cart_rule->minimum_amount = 1;
+        $cart_rule->minimum_amount_tax = 1;
+        $cart_rule->minimum_amount_currency = 1;
+        $cart_rule->minimum_amount_shipping = 0;
         $cart_rule->date_from = date('Y-m-d H:i:s', time());
         $cart_rule->date_to = date('Y-m-d H:i:s', time() + 10);
-        $cart_rule->active = false;
+        $cart_rule->active = true;
 
         if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
             $cart_rule->reduction_percent = (float) $discountAmount;
@@ -216,7 +220,14 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 PaytabsHelper::log("CartRule could not be added, Order {$order->id}", 3);
             } else {
                 $newCartRuleId = $cart_rule->id;
-                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => ($discountAmount - ($discountAmount * 0.14))], $order->invoice_number);
+                $cart = Cart::getCartByOrderId($order->id);
+                $cart->addCartRule($newCartRuleId);
+                $cart->update();
+                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => $discountAmount], 0, false);
+                $computingPrecision = OrderHelper::getPrecisionFromCart($cart);
+                $order = OrderHelper::updateOrderCartRules($order, $cart, $computingPrecision);    
+                $order = OrderHelper::updateOrderTotals($order, $cart, $computingPrecision);    
+                $order = OrderHelper::updateOrderInvoices($order, $cart, $computingPrecision);
                 $order->update();
             }
         } catch (PrestaShopException $e) {
