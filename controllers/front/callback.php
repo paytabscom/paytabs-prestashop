@@ -224,8 +224,9 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 $cart->addCartRule($newCartRuleId);
                 $cart->update();
                 $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => $discountAmount], 0, false);
+                $invoice_id = $order->invoice_number ?? null;
                 $computingPrecision = OrderHelper::getPrecisionFromCart($cart);
-                $order = OrderHelper::updateOrderCartRules($order, $cart, $computingPrecision);    
+                $order = OrderHelper::updateOrderCartRules($order, $cart, $computingPrecision, $invoice_id);    
                 $order = OrderHelper::updateOrderTotals($order, $cart, $computingPrecision);    
                 $order = OrderHelper::updateOrderInvoices($order, $cart, $computingPrecision);
                 $order->update();
