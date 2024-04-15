@@ -30,7 +30,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $request_param = $this->prepare_order($cart, $paymentKey);
 
     $iframe = ($this->getConfig('payment_form') == 'iframe');
-    file_put_contents('payment-form' , json_encode($iframe));
+
     // Create paypage
     $paypage = $paytabsApi->create_pay_page($request_param);
 
