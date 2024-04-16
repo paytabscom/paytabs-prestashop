@@ -182,8 +182,12 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             $discountAmount = (float) $cart_amount - (float) $tran_total;
             if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
                 $discountAmount = $discountAmounts[$index];
+            } else {
+                if ($discountAmount != $discountAmounts[$index]) {
+                    PaytabsHelper::log('Discount amount not match ' . $discountAmount . ' <> ' . $discountAmounts[$index], 2);
+                }
             }
-    
+
             $this->addCartRule($order, $discountType, $discountAmount);
         }
     }
@@ -198,7 +202,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
     {
         $cart_rule = new CartRule();
         $cart_rule->code = CartRule::BO_ORDER_CODE_PREFIX . $order->id_cart;
-        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 'Card Discount order #'.$order->id;
+        $cart_rule->name[Configuration::get('PS_LANG_DEFAULT')] = 'Card Discount order #' . $order->id;
         $cart_rule->id_customer = $order->id_customer;
         $cart_rule->minimum_amount = 1;
         $cart_rule->minimum_amount_tax = 1;
@@ -226,8 +230,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => $discountAmount], 0, false);
                 $invoice_id = $order->invoice_number ?? null;
                 $computingPrecision = OrderHelper::getPrecisionFromCart($cart);
-                $order = OrderHelper::updateOrderCartRules($order, $cart, $computingPrecision, $invoice_id);    
-                $order = OrderHelper::updateOrderTotals($order, $cart, $computingPrecision);    
+                $order = OrderHelper::updateOrderCartRules($order, $cart, $computingPrecision, $invoice_id);
+                $order = OrderHelper::updateOrderTotals($order, $cart, $computingPrecision);
                 $order = OrderHelper::updateOrderInvoices($order, $cart, $computingPrecision);
                 $order->update();
             }

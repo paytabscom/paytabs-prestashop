@@ -1,7 +1,8 @@
 <?php
+
 use PrestaShop\PrestaShop\Core\Localization\CLDR\ComputingPrecision;
 
-class OrderHelper 
+class OrderHelper
 {
     private const KEEP_ORDER_PRICES = true;
 
@@ -130,7 +131,6 @@ class OrderHelper
                     continue 2;
                 }
             }
-
         }
 
         // Finally add the new cart rules that are not in the Order
@@ -156,7 +156,5 @@ class OrderHelper
         }
 
         return $order;
-
     }
-
 }
