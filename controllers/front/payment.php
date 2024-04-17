@@ -36,8 +36,12 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $success = $paypage->success;
     $message = @$paypage->message;
 
-    $_logMsg = 'PayTabs: ' . json_encode($paypage);
-    PrestaShopLogger::addLog($_logMsg, ($paypage->success ? 1 : 3), null, 'Cart', $cart->id, true, $cart->id_customer);
+    if ($success) {
+      $_logMsg = "PayTabs: PayPge created, tran {$paypage->tran_ref}";
+    } else {
+      $_logMsg = 'PayTabs: ' . json_encode($paypage);
+    }
+    PrestaShopLogger::addLog($_logMsg, ($success ? 1 : 3), null, 'Cart', $cart->id, true, $cart->id_customer);
 
     //
 
@@ -62,6 +66,13 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $alt_currency_enable = (bool) $this->getConfig('alt_currency_enable');
     $alt_currency = $this->getConfig('alt_currency') ?? "";
+
+    $discount_enabled = (bool) $this->getConfig("discount_enabled");
+    if ($discount_enabled) {
+      $discount_cards = json_decode($this->getConfig('discount_cards')) ?? array();
+      $discount_amounts = json_decode($this->getConfig('discount_amount')) ?? array();
+      $discount_types = json_decode($this->getConfig('discount_type')) ?? array();
+    }
 
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
@@ -177,6 +188,13 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set08Lang($lang_)
       ->set11ThemeConfigId($config_id)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
+
+    if ($discount_enabled && count($discount_cards) > 0) {
+      $pt_holder
+        ->set13CardDiscounts($discount_cards, $discount_amounts, $discount_types, true);
+
+      PaytabsHelper::log("PayTabs: Order {$cart->id}, Discount enabled", 1);
+    }
 
     if ($alt_currency_enable) {
       $pt_holder->set12AltCurrency($this->getAltCurrency($alt_currency));

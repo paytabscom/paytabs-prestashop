@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.18.2
+ * Version: 2.21.1
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.18.2');
+define('PAYTABS_SDK_VERSION', '2.21.1');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -272,6 +272,119 @@ abstract class PaytabsHelper
 
         return true;
     }
+
+    /** Checks if the PT payload has applied a valid discount.
+     * @return bool
+     */
+    static function hasDiscountApplied($patterns, $amounts, $types, $pt_response)
+    {
+        $applied_discounts = self::getAppliedDiscounts($patterns, $pt_response);
+        if (empty($applied_discounts)) return false;
+
+        $cart_amount = (float)$pt_response->cart_amount;
+        $tran_total = (float)$pt_response->tran_total;
+        if ($cart_amount == $tran_total) return false;
+
+        $_idxs = implode(',', $applied_discounts);
+        PaytabsHelper::log("Discount flag detected, Amount: {$cart_amount} >> {$tran_total}, Indexes [{$_idxs}]", 1);
+
+        foreach ($applied_discounts as $i) {
+            $discount_amount = $amounts[$i];
+            $discount_type = $types[$i];
+
+            $valid_discount = self::isValidDiscount($discount_type, $discount_amount, $cart_amount, $tran_total);
+            if ($valid_discount) {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * If the response payload contains the Discount flag set
+     * And if the used card in the trx matches any of the card patterns in the system
+     * @return array of indexes of the used card patterns
+     */
+    static function getAppliedDiscounts($patterns, $pt_response, $udf_key = 'udf3')
+    {
+        $user_defined = @$pt_response->user_defined;
+        if (!$user_defined) return false;
+
+        $udf3 = @$user_defined->$udf_key;
+        if (!$udf3) return false;
+
+        if ($udf3 != PaytabsEnum::DISCOUNT_FLAG) return false;
+
+        $card_used = @$pt_response->payment_info->payment_description;
+        if (!$card_used) return false;
+
+        $card_used = substr(str_replace(' ', '', $card_used), 0, 6);
+
+        $count = count($patterns);
+        if ($count < 1) return false;
+
+        $indexes = [];
+
+        $card_used_length = strlen($card_used);
+        for ($i = 0; $i < $count; $i++) {
+            $pattern_str = $patterns[$i];
+            $patterns_arr = explode(',', $pattern_str);
+            foreach ($patterns_arr as $pattern) {
+                $shared_length = min(strlen($pattern), $card_used_length);
+
+                if (substr($pattern, 0, $shared_length) == substr($card_used, 0, $shared_length)) {
+                    PaytabsHelper::log("Discount matched: Card ($card_used), {$pattern_str} => {$pattern}", 1);
+
+                    $indexes[] = $i;
+                }
+            }
+        }
+
+        if (count($indexes) > 0) {
+            return $indexes;
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate the discount amount value.
+     * @return bool
+     */
+    static function isValidDiscount($discount_type, $discount_amount, $amount_original, $amount_discounted)
+    {
+        $amount_original = (float)$amount_original;
+        $amount_discounted = (float)$amount_discounted;
+        // if ($amount_original == $amount_discounted) return false;
+
+        $computed_discount = 0;
+        $computed_amount = 0;
+
+        if ($discount_type == PaytabsEnum::DISCOUNT_FIXED) {
+            $computed_discount = $discount_amount;
+        } elseif ($discount_type == PaytabsEnum::DISCOUNT_PERCENTAGE) {
+            $computed_discount = $amount_original * $discount_amount / 100;
+        }
+
+        $computed_amount = $amount_original - $computed_discount;
+
+        //
+
+        $tolerancePercentage = 0.1;
+
+        // Calculate the percentage difference
+        $percentageDifference = abs((($amount_discounted - $computed_amount) / $amount_discounted) * 100);
+
+        if ($percentageDifference <= $tolerancePercentage) {
+            // PaytabsHelper::log("Discount values: {$amount_original}, {$computed_amount}", 1);
+            return true;
+        } else {
+            PaytabsHelper::log("Exceeded the tolerance, Discount values: {$amount_original}, {$computed_amount}", 2);
+        }
+
+        return false;
+    }
 }
 
 
@@ -284,6 +397,9 @@ abstract class PaytabsEnum
     const TRAN_TYPE_CAPTURE  = 'capture';
     const TRAN_TYPE_SALE     = 'sale';
     const TRAN_TYPE_REGISTER = 'register';
+    // Auth Extension is used to refresh the hold on the funds
+    // Followup an Auth transaction
+    const TRAN_TYPE_AUTH_EXT = 'authext';
 
     const TRAN_TYPE_PAYMENT_REQUEST = 'payment request';
 
@@ -309,10 +425,18 @@ abstract class PaytabsEnum
 
     //
 
+    const TOKEN_TYPE_REGISTERED = 'registered';
+    const TOKEN_TYPE_UNSCHEDULED = 'unscheduled';
+    const TOKEN_TYPE_RECURRING_FIXED = 'recurring_fixed';
+    const TOKEN_TYPE_RECURRING_VARIABLE = 'recurring_variable';
+
+    //
+
     const PP_ERR_DUPLICATE = 4;
 
     //
 
+    const DISCOUNT_FLAG = 'flag.card_discount';
     const DISCOUNT_PERCENTAGE = "percentage";
     const DISCOUNT_FIXED = "fixed";
 
@@ -324,6 +448,11 @@ abstract class PaytabsEnum
     static function TranIsAuth($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_AUTH) == 0;
+    }
+
+    static function TranIsAuthExt($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_AUTH_EXT) == 0;
     }
 
     static function TranIsSale($tran_type)
@@ -425,6 +554,7 @@ abstract class PaytabsEnum
  * Members:
  * - Transaction Info (Type & Class)
  * - Cart Info (id, desc, amount, currency)
+ * - URLs (return & callback)
  * - Plugin Info (platform name, platform version, plugin version)
  */
 class PaytabsHolder
@@ -444,6 +574,12 @@ class PaytabsHolder
     private $cart;
 
     /**
+     * return
+     * callback
+     */
+    private $urls;
+
+    /**
      * cart_name
      * cart_version
      * plugin_version
@@ -459,9 +595,12 @@ class PaytabsHolder
      */
     public function pt_build()
     {
-        $all = array_merge(
+        $all = [];
+        $this->pt_merges(
+            $all,
             $this->transaction,
             $this->cart,
+            $this->urls,
             $this->plugin_info
         );
 
@@ -501,6 +640,16 @@ class PaytabsHolder
         return $this;
     }
 
+    public function set07URLs($return_url, $callback_url)
+    {
+        $this->urls = [
+            'return'   => $return_url,
+            'callback' => $callback_url,
+        ];
+
+        return $this;
+    }
+
     public function set99PluginInfo($platform_name, $platform_version, $plugin_version = null)
     {
         if (!$plugin_version) {
@@ -521,18 +670,58 @@ class PaytabsHolder
 
 
 /**
+ * Holder class: Holds & Generates the paramters array.
+ * Holds & Generates the parameters array for the payments
+ * Members:
+ * - airline_data
+ *  -- pnr_code
+ */
+abstract class PaytabsExtraDataHolder extends PaytabsHolder
+{
+    private $airline_data;
+
+    /**
+     * @return array
+     */
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $this->pt_merges(
+            $all,
+            $this->airline_data,
+        );
+
+        return $all;
+    }
+
+    public function set60AirlineData($pnr_code)
+    {
+        if (!is_null($pnr_code)) {
+            $this->airline_data = [
+                'airline_data' => [
+                    'pnr_code' => $pnr_code,
+                ],
+            ];
+        }
+
+        return $this;
+    }
+}
+
+
+/**
  * Holder class, Inherit class PaytabsHolder
  * Holds & Generates the parameters array that pass to PayTabs' API
  * Members:
  * - Payment method (payment_code)
  * - Customer Details
  * - Shipping Details
- * - URLs (return & callback)
  * - Language (paypage_lang)
  * - Tokenise
  * - User defined
  */
-abstract class PaytabsBasicHolder extends PaytabsHolder
+abstract class PaytabsBasicHolder extends PaytabsExtraDataHolder
 {
     /**
      * payment_type
@@ -566,12 +755,6 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
     private $shipping_details;
 
     /**
-     * return
-     * callback
-     */
-    private $urls;
-
-    /**
      * paypage_lang
      */
     private $lang;
@@ -581,6 +764,15 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
      * show_save_card
      */
     private $tokenise;
+
+    /**
+     * tokenise
+     * token_type
+     * counter
+     * total_count
+     * show_save_card
+     */
+    private $token_info;
 
     /**
      * udf[1-9]
@@ -599,11 +791,11 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
         $this->pt_merges(
             $all,
             $this->payment_code,
-            $this->urls,
             $this->customer_details,
             $this->shipping_details,
             $this->lang,
             $this->tokenise,
+            $this->token_info,
             $this->user_defined
         );
 
@@ -705,17 +897,6 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
     }
 
 
-    public function set07URLs($return_url, $callback_url)
-    {
-        $this->urls = [
-            'return'   => $return_url,
-            'callback' => $callback_url,
-        ];
-
-        return $this;
-    }
-
-
     public function set08Lang($lang_code)
     {
         $this->lang = [
@@ -727,6 +908,7 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
 
 
     /**
+     * @deprecated
      * @param int $token_format integer between 2 and 6, Set the Token format
      * @param bool $optional Display the save card option on the payment page
      */
@@ -735,6 +917,37 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
         if ($on) {
             $this->tokenise = [
                 'tokenise' => $token_format,
+                'show_save_card' => $optional
+            ];
+        }
+
+        return $this;
+    }
+
+
+    /**
+     * @param int $token_format integer between 2 and 6, Set the Token format
+     * @param string $token_type
+     * @param int $counter
+     * @param int $total_count
+     * @param bool $optional Display the save card option on the payment page
+     */
+    public function set11TokeniseInfo($on, $token_format = 2, $token_type = PaytabsEnum::TOKEN_TYPE_UNSCHEDULED, $counter = null, $total_count = null, $optional = false)
+    {
+        if ($on) {
+            $_info = [
+                'tokenise' => $token_format,
+                'token_type' => $token_type,
+            ];
+            if (!is_null($counter)) {
+                $_info['counter'] = $counter;
+            }
+            if (!is_null($total_count)) {
+                $_info['total_count'] = $total_count;
+            }
+
+            $this->token_info = [
+                'token_info' => $_info,
                 'show_save_card' => $optional
             ];
         }
@@ -866,7 +1079,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         return $this;
     }
 
-    public function set13CardDiscounts($discount_patterns, $discount_amounts, $discount_types)
+    public function set13CardDiscounts($discount_patterns, $discount_amounts, $discount_types, $flag_set = false)
     {
         if (empty($discount_patterns)) {
             PaytabsHelper::log('Paytabs admin: Discount arrays must be not empty', 3);
@@ -913,6 +1126,10 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             $this->card_discounts = [
                 'card_discounts' => $cards
             ];
+
+            if ($flag_set) {
+                $this->set50UserDefined(null, null, PaytabsEnum::DISCOUNT_FLAG);
+            }
         }
 
         return $this;
@@ -926,13 +1143,22 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
  * Members:
  * - Token Info (token & tran_ref)
  */
-class PaytabsTokenHolder extends PaytabsHolder
+class PaytabsTokenHolder extends PaytabsExtraDataHolder
 {
     /**
      * token
      * tran_ref
      */
     private $token_info;
+
+    /**
+     * token
+     * tran_ref
+     * token_type
+     * counter
+     * total_count
+     */
+    private $token_details;
 
 
     public function set20Token($tran_ref, $token = null)
@@ -948,11 +1174,46 @@ class PaytabsTokenHolder extends PaytabsHolder
         return $this;
     }
 
+    public function set21TokenInfo($tran_ref, $token, $token_type, $counter, $total_count)
+    {
+        $this->token_details = [];
+
+        $details = [];
+
+        if ($tran_ref) {
+            $details = ['tran_ref' => $tran_ref];
+        }
+
+        if ($token) {
+            $details['token'] = $token;
+        }
+
+        if ($token_type) {
+            $details['token_type'] = $token_type;
+        }
+        if (!is_null($counter)) {
+            $details['counter'] = $counter;
+        }
+        if (!is_null($total_count)) {
+            $details['total_count'] = $total_count;
+        }
+
+        if (count($details) > 0) {
+            $this->token_details['token_info'] = $details;
+        }
+
+        return $this;
+    }
+
     public function pt_build()
     {
         $all = parent::pt_build();
 
-        $all = array_merge($all, $this->token_info);
+        if ($this->token_details) {
+            $all = array_merge($all, $this->token_details);
+        } else if ($this->token_info) {
+            $all = array_merge($all, $this->token_info);
+        }
 
         return $all;
     }
@@ -1140,7 +1401,7 @@ class PaytabsApi
         '5'  => ['name' => 'mada', 'title' => 'PayTabs - mada', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_PENDING]],
-        '8'  => ['name' => 'fawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND, PaytabsApi::GROUP_PENDING]],
+        // '8'  => ['name' => 'fawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND, PaytabsApi::GROUP_PENDING]],
         '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_REFUND]],
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR', 'USD'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
@@ -1156,7 +1417,7 @@ class PaytabsApi
         '21' => ['name' => 'installment', 'title' => 'PayTabs - Installment', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_IFRAME]],
         '22' => ['name' => 'touchpoints', 'title' => 'PayTabs - Touchpoints', 'currencies' => ['AED'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_IFRAME]],
         '23' => ['name' => 'forsa', 'title' => 'PayTabs - Forsa', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '24' => ['name' => 'tabby', 'title' => 'PayTabs - Tabby', 'currencies' => ['AED'], 'groups' => []],
+        '24' => ['name' => 'tabby', 'title' => 'PayTabs - Tabby', 'currencies' => ['AED', 'SAR'], 'groups' => []],
         '25' => ['name' => 'souhoola', 'title' => 'PayTabs - Souhoola', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '26' => ['name' => 'amaninstallments', 'title' => 'PayTabs - Aman installments', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
 
@@ -1230,6 +1491,23 @@ class PaytabsApi
         return $endpoints;
     }
 
+    /**
+     * Merge and return all Currency codes available in the payment methods list
+     */
+    public static function getCurrencies()
+    {
+        $currencies = [];
+        foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
+            $_currencies = $value['currencies'];
+            if ($_currencies) {
+                $_currencies = array_filter($_currencies);
+                $currencies = array_merge($currencies, $_currencies);
+            }
+        }
+        $currencies = array_unique($currencies);
+        return $currencies;
+    }
+
     public static function getEndpoint($region)
     {
         $endpoint = self::BASE_URLS[$region]['endpoint'];
@@ -1273,8 +1551,8 @@ class PaytabsApi
             $values['tran_class'] == PaytabsEnum::TRAN_CLASS_RECURRING
             || array_key_exists('payment_token', $values)
             || array_key_exists('apple_pay_token', $values)
-            || array_key_exists('card_details', $values);
-
+            || array_key_exists('card_details', $values)
+            || (array_key_exists('token', $values) || array_key_exists('token_info', $values));
         $response = $this->sendRequest(self::URL_REQUEST, $values);
 
         $res = json_decode($response);
@@ -1441,7 +1719,7 @@ class PaytabsApi
             $_paypage->success = false;
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
-
+            $_paypage->is_redirect = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
             $_paypage->payment_url = @$paypage->redirect_url;
         }
 

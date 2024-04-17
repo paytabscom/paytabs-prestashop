@@ -13,9 +13,10 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.9.0');
+define('PAYTABS_PAYPAGE_VERSION', '3.10.0');
 
 require_once __DIR__ . '/paytabs_core.php';
+require_once __DIR__ . '/helpers/order-helper.php';
 
 function paytabs_error_log($msg, $severity)
 {
@@ -85,21 +86,7 @@ class PayTabs_PayPage extends PaymentModule
      */
     public function getContent()
     {
-        if (Tools::isSubmit('btnSubmit')) {
-            $this->_postValidation();
-            if (!count($this->_postErrors)) {
-                $this->_postProcess();
-            } else {
-                foreach ($this->_postErrors as $err) {
-                    $this->_html .= $this->displayError($err);
-                }
-            }
-        } else {
-            $this->_html .= '<br />';
-        }
-
-        //
-
+        // init
         $endpoints = PaytabsApi::getEndpoints();
         $endpoints = array_map(function ($key, $value) {
             return [
@@ -108,198 +95,36 @@ class PayTabs_PayPage extends PaymentModule
             ];
         }, array_keys($endpoints), $endpoints);
 
-        $forms = array_map(function ($method) use ($endpoints) {
-            $code = $method['name'];
-            $form = array(
-                'form' => array(
-                    'legend' => array(
-                        'title' => ($method['title']),
-                        'icon' => 'icon-key'
-                    ),
-                    'input' => array(
-                        array(
-                            'type' => 'switch',
-                            'label' => 'Enabled',
-                            'name' => 'active_' . $code,
-                            'is_bool' => true,
-                            'required' => true,
-                            'values' => array(
-                                array(
-                                    'id' => 'active_on',
-                                    'value' => true,
-                                    'label' => $this->_trans('Enabled', array(), 'Admin.Global'),
-                                ),
-                                array(
-                                    'id' => 'active_off',
-                                    'value' => false,
-                                    'label' => $this->_trans('Disabled', array(), 'Admin.Global'),
-                                )
-                            ),
-                        ),
-                        array(
-                            'type' => 'select',
-                            'label' => 'Endpoint region',
-                            'name' => 'endpoint_' . $code,
-                            'required' => true,
-                            'options' => [
-                                'query' => $endpoints,
-                                'id' => 'key',
-                                'name' => 'title'
-                            ],
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => ('Profile ID'),
-                            'name' => 'profile_id_' . $code,
-                            'required' => true
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => ('Server Key'),
-                            'name' => 'server_key_' . $code,
-                            'required' => true
-                        ),
-                        array(
-                            'type' => 'switch',
-                            'label' => 'Hide Shipping info',
-                            'name' => 'hide_shipping_' . $code,
-                            'is_bool' => true,
-                            'values' => array(
-                                [
-                                    'value' => true,
-                                    'label' => $this->_trans('Yes', array(), 'Admin.Global'),
-                                ],
-                                [
-                                    'value' => false,
-                                    'label' => $this->_trans('No', array(), 'Admin.Global'),
-                                ]
-                            ),
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => 'Order in Checkout page',
-                            'name' => 'sort_' . $code
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => 'Config id (Theme)',
-                            'name' => 'config_id_' . $code,
-                        ),
-                        array(
-                            'type' => 'switch',
-                            'label' => 'Alternative currency enable',
-                            'name' => 'alt_currency_enable_' . $code,
-                            'is_bool' => true,
-                            'values' => array(
-                                array(
-                                    'value' => true,
-                                    'label' => $this->_trans('Enabled', array(), 'Admin.Global'),
-                                ),
-                                array(
-                                    'value' => false,
-                                    'label' => $this->_trans('Disabled', array(), 'Admin.Global'),
-                                )
-                            ),
-                        ),
-                        array(
-                            'type' => 'text',
-                            'label' => 'Alternative Currency',
-                            'name' => 'alt_currency_' . $code,
-                        ),
+        $this->context->smarty->assign([
+            'paytabs_action_url'    => "./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name",
+            'paytabs_endpoints'     => $endpoints,
+            'paytabs_payment_types' => PaytabsApi::PAYMENT_TYPES,
+        ]);
 
-                    )
-                ),
-            );
+        // handle submit
 
-            if ($code === 'valu') {
-                $form['form']['input'][] = array(
-                    'type' => 'text',
-                    'label' => ('valU product ID'),
-                    'name' => 'valu_product_id_' . $code,
-                    'required' => true
-                );
+        if (Tools::isSubmit('btnSubmit')) {
+
+            $this->_postValidation();
+
+            if (!count($this->_postErrors)) {
+
+                $this->_postProcess();
+            } else {
+
+                foreach ($this->_postErrors as $err) {
+                    $this->_html .= $this->displayError($err);
+                }
+
+                $this->context->smarty->assign([
+                    'errors_html' => $this->_html,
+                ]);
+
+                return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
             }
+        }
 
-            if (PaytabsHelper::isCardPayment($code)) {
-                $form['form']['input'][] = array(
-                    'type'  => 'switch',
-                    'label' => 'Allow associated methods',
-                    'name'  => 'allow_associated_methods_' . $code,
-                    'is_bool' => true,
-                    'values' => array(
-                        [
-                            'value' => true,
-                            'label' => $this->_trans('Yes', array(), 'Admin.Global'),
-                        ],
-                        [
-                            'value' => false,
-                            'label' => $this->_trans('No', array(), 'Admin.Global'),
-                        ]
-                    ),
-                );
-            }
-
-            return $form;
-        }, PaytabsApi::PAYMENT_TYPES);
-
-        // Submit button for all Sections
-        $forms[] = [
-            'form' => [
-                'legend' => array(
-                    'title' => 'Save settings',
-                    'icon' => 'icon-gears'
-                ),
-                'submit' => array(
-                    'title' => $this->_trans('Save', array(), 'Admin.Actions'),
-                )
-            ]
-        ];
-
-        $helper = new HelperForm();
-        $helper->submit_action = 'btnSubmit';
-
-        $i = 2;
-        $values = array_reduce(PaytabsApi::PAYMENT_TYPES, function ($acc, $method) use (&$i) {
-            $code = $method['name'];
-
-            $acc["active_{$code}"] = Tools::getValue("active_{$code}", Configuration::get("active_{$code}"));
-
-            $acc["endpoint_{$code}"] = Tools::getValue("endpoint_{$code}", Configuration::get("endpoint_{$code}"));
-
-            $acc["profile_id_{$code}"] = Tools::getValue("profile_id_{$code}", Configuration::get("profile_id_{$code}"));
-            $acc["server_key_{$code}"] = Tools::getValue("server_key_{$code}", Configuration::get("server_key_{$code}"));
-
-            $acc["hide_shipping_{$code}"] = Tools::getValue("hide_shipping_{$code}", Configuration::get("hide_shipping_{$code}"));
-
-            $acc["config_id_{$code}"] = Tools::getValue("config_id_{$code}", Configuration::get("config_id_{$code}"));
-
-            $acc["alt_currency_enable_{$code}"] = Tools::getValue("alt_currency_enable_{$code}", Configuration::get("alt_currency_enable_{$code}"));
-            $acc["alt_currency_{$code}"] = Tools::getValue("alt_currency_{$code}", Configuration::get("alt_currency_{$code}"));
-
-            $sort = (int)Tools::getValue("sort_{$code}", Configuration::get("sort_{$code}"));
-            if (!$sort) {
-                $sort = ($code == 'mada') ? 1 : $i++;
-            }
-            $acc["sort_{$code}"] = $sort;
-
-            if ($code === 'valu') {
-                $acc["valu_product_id_{$code}"] = Tools::getValue("valu_product_id_{$code}", Configuration::get("valu_product_id_{$code}"));
-            }
-
-            if (PaytabsHelper::isCardPayment($code)) {
-                $acc["allow_associated_methods_{$code}"] = Tools::getValue("allow_associated_methods_{$code}", Configuration::get("allow_associated_methods_{$code}"));
-            }
-
-            return $acc;
-        }, []);
-
-        $helper->tpl_vars = array(
-            'fields_value' => $values
-        );
-
-        $this->_html .= $helper->generateForm($forms);
-
-        return $this->_html;
+        return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
     }
 
 
@@ -308,7 +133,9 @@ class PayTabs_PayPage extends PaymentModule
         if (!Tools::isSubmit('btnSubmit')) return;
 
         foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+
             $code = $method['name'];
+
             if (Tools::getValue("active_{$code}")) {
                 if (!Tools::getValue("endpoint_{$code}")) {
                     $this->_postErrors[] = "{$method['title']}: Endpoint is required.";
@@ -324,6 +151,31 @@ class PayTabs_PayPage extends PaymentModule
                     $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
                 }
             }
+
+            if (PaytabsHelper::canUseCardFeatures($code)) {
+                $discounts = Tools::getValue("discount_cards_{$code}");
+                $amounts = Tools::getValue("discount_amount_{$code}");
+
+                if (!$discounts || !$amounts || count($discounts) < 1) continue;
+
+                if (count($discounts) != count($amounts)) {
+                    $this->_postErrors[] = "{$method['title']}: Invalid (cards, amounts) map.";
+                    continue;
+                }
+
+                foreach ($discounts as $key => $card) {
+                    if (!PaytabsHelper::isValidDiscountPatterns($card)) {
+                        $this->_postErrors[] = "{$method['title']}: Invalid Card pattern, Must be digits only, Length between 4 and 10, Separated by commas, (e.g 5200,4411)";
+                        continue;
+                    }
+
+                    $amount_int = $amounts[$key];
+                    if (!(is_numeric($amount_int) && $amount_int > 0)) {
+                        $this->_postErrors[] = "{$method['title']}: Invalid discount amount";
+                        continue;
+                    }
+                }
+            }
         }
     }
 
@@ -331,8 +183,11 @@ class PayTabs_PayPage extends PaymentModule
     protected function _postProcess()
     {
         if (Tools::isSubmit('btnSubmit')) {
+
             foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+
                 $code = $method['name'];
+
                 Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
 
                 Configuration::updateValue("endpoint_{$code}", Tools::getValue("endpoint_{$code}"));
@@ -348,8 +203,20 @@ class PayTabs_PayPage extends PaymentModule
                     Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
                 }
 
-                if (PaytabsHelper::isCardPayment($code)) {
-                    Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
+                if (PaytabsHelper::canUseCardFeatures($code)) {
+                    if (PaytabsHelper::isCardPayment($code)) {
+                        Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
+                    }
+
+                    $discount_cards  = Tools::getValue("discount_cards_{$code}", array());
+                    $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
+                    $discount_types  = Tools::getValue("discount_type_{$code}", array());
+
+                    Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
+                    Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
+                    Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
+
+                    Configuration::updateValue("discount_enabled_{$code}", (bool)Tools::getValue("discount_enabled_{$code}"));
                 }
 
                 Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));
@@ -358,7 +225,7 @@ class PayTabs_PayPage extends PaymentModule
                 Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
             }
         }
-        $this->_html .= $this->displayConfirmation($this->_trans('Settings updated', array(), 'Admin.Global'));
+        Tools::redirectAdmin("./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name&success");
     }
 
 
