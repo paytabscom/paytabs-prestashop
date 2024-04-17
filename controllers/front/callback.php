@@ -213,9 +213,13 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $cart_rule->active = true;
 
         if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
-            $cart_rule->reduction_percent = (float) $discountAmount;
+            // $cart_rule->reduction_percent = (float) $discountAmount;
+            $discountEstimatedValue = ($discountAmount / 100) * ($order->total_paid_real);
+            $cart_rule->reduction_amount = (float) $discountEstimatedValue;
+            $cart_rule->reduction_tax = true;
         } else if ($discountType === PaytabsEnum::DISCOUNT_FIXED) {
-            $cart_rule->reduction_amount = (float) $discountAmount;
+            $discountEstimatedValue = $discountAmount;
+            $cart_rule->reduction_amount = (float) $discountEstimatedValue;
             $cart_rule->reduction_tax = true;
         }
 
@@ -227,7 +231,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 $cart = Cart::getCartByOrderId($order->id);
                 $cart->addCartRule($newCartRuleId);
                 $cart->update();
-                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountAmount, 'tax_excl' => $discountAmount], 0, false);
+                $order->addCartRule($newCartRuleId, 'PT-CardDiscount-' . time(), ['tax_incl' => $discountEstimatedValue, 'tax_excl' => $discountEstimatedValue], 0, false);
                 $invoice_id = $order->invoice_number ?? null;
                 $computingPrecision = OrderHelper::getPrecisionFromCart($cart);
                 $order = OrderHelper::updateOrderCartRules($order, $cart, $computingPrecision, $invoice_id);
