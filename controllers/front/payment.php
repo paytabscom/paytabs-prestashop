@@ -54,10 +54,9 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
           'payment_url' => $payment_url,
         ]);
         $this->setTemplate('module:paytabs_paypage/views/templates/front/payment_framed.tpl');
-      }else{
+      } else {
         Tools::redirect($payment_url);
       }
-      
     } else {
       $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
