@@ -215,11 +215,11 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
             // $cart_rule->reduction_percent = (float) $discountAmount;
             $discountEstimatedValue = ($discountAmount / 100) * ($order->total_paid_real);
-            $cart_rule->reduction_amount = (float) $discountEstimatedValue;
+            $cart_rule->reduction_amount = round($discountEstimatedValue, 2);
             $cart_rule->reduction_tax = true;
         } else if ($discountType === PaytabsEnum::DISCOUNT_FIXED) {
             $discountEstimatedValue = $discountAmount;
-            $cart_rule->reduction_amount = (float) $discountEstimatedValue;
+            $cart_rule->reduction_amount = round($discountEstimatedValue, 2);;
             $cart_rule->reduction_tax = true;
         }
 
