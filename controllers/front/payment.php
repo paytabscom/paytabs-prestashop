@@ -53,7 +53,11 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
         $this->context->smarty->assign([
           'payment_url' => $payment_url,
         ]);
-        $this->setTemplate('module:paytabs_paypage/views/templates/front/payment_framed.tpl');
+        if (PS_VERSION_IS_NEW) {
+          $this->setTemplate('module:paytabs_paypage/views/templates/front/payment_framed.tpl');
+        } else {
+          $this->setTemplate('payment_framed_16.tpl');
+        }
       } else {
         Tools::redirect($payment_url);
       }
