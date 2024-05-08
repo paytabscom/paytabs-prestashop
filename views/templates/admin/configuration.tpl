@@ -42,11 +42,10 @@
 
     <form id="configuration_form" class="defaultForm form-horizontal" method="POST" enctype="multipart/form-data"
         novalidate action="{$paytabs_action_url}">
-        
-        {$i = 2}
 
+        {$i = 2}
         {$code = $payment_type['name']}
-        <input name="payment_method" value="{$code}" hidden/>
+        <input name="payment_method" value="{$code}" type="hidden" />
 
         <div class="panel">
 
@@ -368,9 +367,8 @@
             </div><!-- /.form-wrapper -->
 
             <div class="panel-footer">
-                <button type="submit" value="1" id="configuration_form_submit_btn" name="btnSubmit"
-                    class="btn btn-default pull-right">
-                    <i class="process-icon-save"></i> Save
+                <button type="submit" value="1" name="btnSubmit" class="btn btn-default pull-right">
+                    <i class="process-icon-save"></i> Save ({$payment_type['title']})
                 </button>
             </div>
 
@@ -379,7 +377,6 @@
     </form>
 
 {/foreach}
-
 
 <script>
     

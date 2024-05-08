@@ -137,7 +137,10 @@ class PayTabs_PayPage extends PaymentModule
         if (!Tools::isSubmit('btnSubmit')) return;
 
         $code = Tools::getValue('payment_method');
-        $method = PaytabsHelper::getPaymentMethod($code);
+        $method = PaytabsHelper::getPaymentMethodDetails($code);
+        if (!$method) {
+            die('Payment method is required');
+        }
 
         if (Tools::getValue("active_{$code}")) {
             if (!Tools::getValue("endpoint_{$code}")) {
@@ -151,7 +154,7 @@ class PayTabs_PayPage extends PaymentModule
             }
 
             if ($code === 'valu' && !Tools::getValue("valu_product_id_{$code}")) {
-                $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
+                // $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
             }
         }
 

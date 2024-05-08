@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.21.1
+ * Version: 2.21.2
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.21.1');
+define('PAYTABS_SDK_VERSION', '2.21.2');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -20,13 +20,14 @@ abstract class PaytabsHelper
         return PaytabsApi::PAYMENT_TYPES[$key]['name'];
     }
 
-    static function getPaymentMethod($name)
+    static function getPaymentMethodDetails($code)
     {
-        foreach(PaytabsApi::PAYMENT_TYPES as $k => $v){
-            if($v['name'] == $name){
+        foreach (PaytabsApi::PAYMENT_TYPES as $k => $v) {
+            if ($v['name'] == $code) {
                 return $v;
             }
         }
+        return false;
     }
 
     static function paymentAllowed($code, $currencyCode)
