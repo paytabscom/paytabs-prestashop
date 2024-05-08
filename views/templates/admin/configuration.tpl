@@ -276,7 +276,6 @@
                                 <a class="slide-button btn"></a>
                             </span>
                             <span class="help-block">Apply a payment gateway discounts on cards matching the blow defined list.</span>
-                            <p class="text-danger" id="discount_enabled_{$code}_warning">The paid amount will be considered as the order total, discount value will be counted on PayTabs side only.</p>
 
                         </div>
 
@@ -385,23 +384,12 @@
 <script>
     
     let addDiscountBtns = document.getElementsByClassName('add-discount');
-    let discountSwitches = document.getElementsByClassName('pt-discount-switch');
     
     for (let i = 0; i < addDiscountBtns.length; i++) {
         let btn = addDiscountBtns[i];
         btn.addEventListener('click', (e) => addDiscountRow(btn));
     }
 
-    for (let i = 0; i < discountSwitches.length; i++) {
-        let tag = discountSwitches[i];
-        tag.addEventListener('change', (e) => {
-            $('#' + tag.name + '_warning').toggle(tag.value == '1');
-        });
-        if (tag.checked) {
-            // $(tag).trigger('change');
-            tag.dispatchEvent(new Event("change"));
-        }
-    }
 
     function addDiscountRow(btn)
     {        
