@@ -236,6 +236,28 @@
                     </div>
                 {/if}
 
+                {if (PaytabsHelper::supportIframe($code))}
+                    <div class="form-group">
+
+                        <label class="control-label col-lg-3 required">
+                            Payment form type
+                        </label>
+
+                        <div class="col-lg-9">
+
+                            <select name="payment_form_{$code}" id="payment_form_{$code}">
+                                {foreach $redirect_modes as $mode => $desc}                                
+                                    <option value="{$mode}" {if (Configuration::get("payment_form_$code") == "{$mode}")} selected {/if}>
+                                        {$desc}
+                                    </option>
+                                {/foreach}
+                            </select>
+
+                        </div>
+
+                    </div>
+                {/if}
+
                 {if (PaytabsHelper::canUseCardFeatures($code)) }
 
                     <div class="form-group">

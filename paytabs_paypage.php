@@ -95,10 +95,16 @@ class PayTabs_PayPage extends PaymentModule
             ];
         }, array_keys($endpoints), $endpoints);
 
+        $redirect_modes = [
+            'redirect' => 'Redirect to hosted form on PayTabs server',
+            'iframe' => 'iFrame payment form integrated into checkout',
+        ];
+
         $this->context->smarty->assign([
             'paytabs_action_url'    => "./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name",
             'paytabs_endpoints'     => $endpoints,
             'paytabs_payment_types' => PaytabsApi::PAYMENT_TYPES,
+            'redirect_modes'        => $redirect_modes,
         ]);
 
         // handle submit
@@ -224,6 +230,10 @@ class PayTabs_PayPage extends PaymentModule
 
                 Configuration::updateValue("alt_currency_enable_{$code}", (bool)Tools::getValue("alt_currency_enable_{$code}"));
                 Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
+
+                if (PaytabsHelper::supportIframe($code)) {
+                    Configuration::updateValue("payment_form_{$code}", Tools::getValue("payment_form_{$code}"));
+                }
             // }
         }
         Tools::redirectAdmin("./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name&success");
