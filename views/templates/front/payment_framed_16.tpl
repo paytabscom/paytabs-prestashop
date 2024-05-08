@@ -1,0 +1,1 @@
+<iframe src="{$payment_url}" frameborder="0" style="min-height: 700px; width: 100%;"></iframe>

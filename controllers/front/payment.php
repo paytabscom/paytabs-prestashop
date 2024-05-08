@@ -21,6 +21,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $merchant_id = $this->getConfig('profile_id');
     $merchant_key = $this->getConfig('server_key');
 
+    $iframe = ($this->getConfig('payment_form') == 'iframe');
+
     $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 
     //
@@ -46,8 +48,20 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     //
 
     if ($success) {
+
       $payment_url = $paypage->payment_url;
-      Tools::redirect($payment_url);
+      if ($iframe) {
+        $this->context->smarty->assign([
+          'payment_url' => $payment_url,
+        ]);
+        if (PS_VERSION_IS_NEW) {
+          $this->setTemplate('module:paytabs_paypage/views/templates/front/payment_framed.tpl');
+        } else {
+          $this->setTemplate('payment_framed_16.tpl');
+        }
+      } else {
+        Tools::redirect($payment_url);
+      }
     } else {
       $url_step3 = $this->context->link->getPageLink('order', true, null, ['step' => '3']);
 
@@ -73,6 +87,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       $discount_amounts = json_decode($this->getConfig('discount_amount')) ?? array();
       $discount_types = json_decode($this->getConfig('discount_type')) ?? array();
     }
+
+    $iframe = ($this->getConfig('payment_form') == 'iframe');
 
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
@@ -121,8 +137,6 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     // $siteUrl = Context::getContext()->shop->getBaseURL(true);
     $return_url = Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['p' => $paymentKey]);
     $callback_url = Context::getContext()->link->getModuleLink($this->module->name, 'callback', ['p' => $paymentKey]);
-
-    //
 
     // $country_details = PaytabsHelper::getCountryDetails($invoice_country->iso_code);
 
@@ -186,6 +200,7 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       ->set06HideShipping($hide_shipping)
       ->set07URLs($return_url, $callback_url)
       ->set08Lang($lang_)
+      ->set09Framed($iframe, 'top')
       ->set11ThemeConfigId($config_id)
       ->set99PluginInfo('PrestaShop', _PS_VERSION_, PAYTABS_PAYPAGE_VERSION);
 
