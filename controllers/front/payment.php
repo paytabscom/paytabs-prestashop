@@ -21,6 +21,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     $merchant_id = $this->getConfig('profile_id');
     $merchant_key = $this->getConfig('server_key');
 
+    $iframe = ($this->getConfig('payment_form') == 'iframe');
+
     $paytabsApi = PaytabsApi::getInstance($endpoint, $merchant_id, $merchant_key);
 
     //
@@ -29,7 +31,6 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
 
     $request_param = $this->prepare_order($cart, $paymentKey);
 
-    $iframe = ($this->getConfig('payment_form') == 'iframe');
 
     // Create paypage
     $paypage = $paytabsApi->create_pay_page($request_param);
@@ -87,6 +88,8 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
       $discount_types = json_decode($this->getConfig('discount_type')) ?? array();
     }
 
+    $iframe = ($this->getConfig('payment_form') == 'iframe');
+
     $currency = new Currency((int) ($cart->id_currency));
     $customer = new Customer(intval($cart->id_customer));
 
@@ -134,11 +137,6 @@ class PayTabs_PayPagePaymentModuleFrontController extends ModuleFrontController
     // $siteUrl = Context::getContext()->shop->getBaseURL(true);
     $return_url = Context::getContext()->link->getModuleLink($this->module->name, 'validation', ['p' => $paymentKey]);
     $callback_url = Context::getContext()->link->getModuleLink($this->module->name, 'callback', ['p' => $paymentKey]);
-
-    //
-
-    $iframe = ($this->getConfig('payment_form') == 'iframe');
-
 
     // $country_details = PaytabsHelper::getCountryDetails($invoice_country->iso_code);
 
