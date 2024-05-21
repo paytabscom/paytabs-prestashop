@@ -37,12 +37,15 @@
 {if isset($errors_html)}
     {$errors_html}
 {/if}
-<form id="configuration_form" class="defaultForm form-horizontal" method="POST" enctype="multipart/form-data"
-    novalidate action="{$paytabs_action_url}">
-    {$i = 2}
-    {foreach $paytabs_payment_types as $payment_type}
-        
+
+{foreach $paytabs_payment_types as $payment_type}
+
+    <form id="configuration_form" class="defaultForm form-horizontal" method="POST" enctype="multipart/form-data"
+        novalidate action="{$paytabs_action_url}">
+
+        {$i = 2}
         {$code = $payment_type['name']}
+        <input name="payment_method" value="{$code}" type="hidden" />
 
         <div class="panel">
 
@@ -232,6 +235,28 @@
                     </div>
                 {/if}
 
+                {if (PaytabsHelper::supportIframe($code))}
+                    <div class="form-group">
+
+                        <label class="control-label col-lg-3 required">
+                            Payment form type
+                        </label>
+
+                        <div class="col-lg-9">
+
+                            <select name="payment_form_{$code}" id="payment_form_{$code}">
+                                {foreach $redirect_modes as $mode => $desc}                                
+                                    <option value="{$mode}" {if (Configuration::get("payment_form_$code") == "{$mode}")} selected {/if}>
+                                        {$desc}
+                                    </option>
+                                {/foreach}
+                            </select>
+
+                        </div>
+
+                    </div>
+                {/if}
+
                 {if (PaytabsHelper::canUseCardFeatures($code)) }
 
                     <div class="form-group">
@@ -341,47 +366,27 @@
                 {/if}
             </div><!-- /.form-wrapper -->
 
+            <div class="panel-footer">
+                <button type="submit" value="1" name="btnSubmit" class="btn btn-default pull-right">
+                    <i class="process-icon-save"></i> Save ({$payment_type['title']})
+                </button>
+            </div>
+
         </div>
 
-    {/foreach}
+    </form>
 
-    <div class="panel">
-
-        <div class="panel-heading">
-            <i class="icon-gears"></i> Save settings
-        </div>
-
-        <div class="panel-footer">
-            <button type="submit" value="1" id="configuration_form_submit_btn" name="btnSubmit"
-                class="btn btn-default pull-right">
-                <i class="process-icon-save"></i> Save
-            </button>
-        </div>
-
-    </div>
-
-</form>
+{/foreach}
 
 <script>
     
     let addDiscountBtns = document.getElementsByClassName('add-discount');
-    let discountSwitches = document.getElementsByClassName('pt-discount-switch');
     
     for (let i = 0; i < addDiscountBtns.length; i++) {
         let btn = addDiscountBtns[i];
         btn.addEventListener('click', (e) => addDiscountRow(btn));
     }
 
-    for (let i = 0; i < discountSwitches.length; i++) {
-        let tag = discountSwitches[i];
-        tag.addEventListener('change', (e) => {
-            $('#' + tag.name + '_warning').toggle(tag.value == '1');
-        });
-        if (tag.checked) {
-            // $(tag).trigger('change');
-            tag.dispatchEvent(new Event("change"));
-        }
-    }
 
     function addDiscountRow(btn)
     {        
