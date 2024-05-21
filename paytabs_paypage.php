@@ -97,10 +97,16 @@ class PayTabs_PayPage extends PaymentModule
             ];
         }, array_keys($endpoints), $endpoints);
 
+        $redirect_modes = [
+            'redirect' => 'Redirect to hosted form on PayTabs server',
+            'iframe' => 'iFrame payment form integrated into checkout',
+        ];
+
         $this->context->smarty->assign([
             'paytabs_action_url'    => "./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name",
             'paytabs_endpoints'     => $endpoints,
             'paytabs_payment_types' => PaytabsApi::PAYMENT_TYPES,
+            'redirect_modes'        => $redirect_modes,
         ]);
 
         // handle submit
@@ -121,8 +127,6 @@ class PayTabs_PayPage extends PaymentModule
                 $this->context->smarty->assign([
                     'errors_html' => $this->_html,
                 ]);
-
-                return $this->display(__FILE__, 'views/templates/admin/configuration.tpl');
             }
         }
 
@@ -134,48 +138,49 @@ class PayTabs_PayPage extends PaymentModule
     {
         if (!Tools::isSubmit('btnSubmit')) return;
 
-        foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+        $code = Tools::getValue('payment_method');
+        $method = PaytabsHelper::getPaymentMethodDetails($code);
+        if (!$method) {
+            die('Payment method is required');
+        }
 
-            $code = $method['name'];
-
-            if (Tools::getValue("active_{$code}")) {
-                if (!Tools::getValue("endpoint_{$code}")) {
-                    $this->_postErrors[] = "{$method['title']}: Endpoint is required.";
-                }
-                if (!Tools::getValue("profile_id_{$code}")) {
-                    $this->_postErrors[] = "{$method['title']}: Profile ID is required.";
-                }
-                if (!Tools::getValue("server_key_{$code}")) {
-                    $this->_postErrors[] = "{$method['title']}: Server Key is required.";
-                }
-
-                if ($code === 'valu' && !Tools::getValue("valu_product_id_{$code}")) {
-                    $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
-                }
+        if (Tools::getValue("active_{$code}")) {
+            if (!Tools::getValue("endpoint_{$code}")) {
+                $this->_postErrors[] = "{$method['title']}: Endpoint is required.";
+            }
+            if (!Tools::getValue("profile_id_{$code}")) {
+                $this->_postErrors[] = "{$method['title']}: Profile ID is required.";
+            }
+            if (!Tools::getValue("server_key_{$code}")) {
+                $this->_postErrors[] = "{$method['title']}: Server Key is required.";
             }
 
-            if (PaytabsHelper::canUseCardFeatures($code)) {
-                $discounts = Tools::getValue("discount_cards_{$code}");
-                $amounts = Tools::getValue("discount_amount_{$code}");
+            if ($code === 'valu' && !Tools::getValue("valu_product_id_{$code}")) {
+                // $this->_postErrors[] = "{$method['title']}: valU product ID is required.";
+            }
+        }
 
-                if (!$discounts || !$amounts || count($discounts) < 1) continue;
+        if (PaytabsHelper::canUseCardFeatures($code)) {
+            $discounts = Tools::getValue("discount_cards_{$code}");
+            $amounts = Tools::getValue("discount_amount_{$code}");
 
-                if (count($discounts) != count($amounts)) {
-                    $this->_postErrors[] = "{$method['title']}: Invalid (cards, amounts) map.";
+            if (!$discounts || !$amounts || count($discounts) < 1) return;
+
+            if (count($discounts) != count($amounts)) {
+                $this->_postErrors[] = "{$method['title']}: Invalid (cards, amounts) map.";
+                return;
+            }
+
+            foreach ($discounts as $key => $card) {
+                if (!PaytabsHelper::isValidDiscountPatterns($card)) {
+                    $this->_postErrors[] = "{$method['title']}: Invalid Card pattern, Must be digits only, Length between 4 and 10, Separated by commas, (e.g 5200,4411)";
                     continue;
                 }
 
-                foreach ($discounts as $key => $card) {
-                    if (!PaytabsHelper::isValidDiscountPatterns($card)) {
-                        $this->_postErrors[] = "{$method['title']}: Invalid Card pattern, Must be digits only, Length between 4 and 10, Separated by commas, (e.g 5200,4411)";
-                        continue;
-                    }
-
-                    $amount_int = $amounts[$key];
-                    if (!(is_numeric($amount_int) && $amount_int > 0)) {
-                        $this->_postErrors[] = "{$method['title']}: Invalid discount amount";
-                        continue;
-                    }
+                $amount_int = $amounts[$key];
+                if (!(is_numeric($amount_int) && $amount_int > 0)) {
+                    $this->_postErrors[] = "{$method['title']}: Invalid discount amount";
+                    continue;
                 }
             }
         }
@@ -186,45 +191,46 @@ class PayTabs_PayPage extends PaymentModule
     {
         if (Tools::isSubmit('btnSubmit')) {
 
-            foreach (PaytabsApi::PAYMENT_TYPES as $index => $method) {
+            $code = Tools::getValue('payment_method');
 
-                $code = $method['name'];
+            Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
 
-                Configuration::updateValue("active_{$code}", Tools::getValue("active_{$code}"));
+            Configuration::updateValue("endpoint_{$code}", Tools::getValue("endpoint_{$code}"));
 
-                Configuration::updateValue("endpoint_{$code}", Tools::getValue("endpoint_{$code}"));
+            Configuration::updateValue("profile_id_{$code}", Tools::getValue("profile_id_{$code}"));
+            Configuration::updateValue("server_key_{$code}", Tools::getValue("server_key_{$code}"));
 
-                Configuration::updateValue("profile_id_{$code}", Tools::getValue("profile_id_{$code}"));
-                Configuration::updateValue("server_key_{$code}", Tools::getValue("server_key_{$code}"));
+            Configuration::updateValue("hide_shipping_{$code}", Tools::getValue("hide_shipping_{$code}"));
 
-                Configuration::updateValue("hide_shipping_{$code}", Tools::getValue("hide_shipping_{$code}"));
+            Configuration::updateValue("sort_{$code}", (int)Tools::getValue("sort_{$code}"));
 
-                Configuration::updateValue("sort_{$code}", (int)Tools::getValue("sort_{$code}"));
+            if ($code === 'valu') {
+                Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
+            }
 
-                if ($code === 'valu') {
-                    Configuration::updateValue("valu_product_id_{$code}", Tools::getValue("valu_product_id_{$code}"));
+            if (PaytabsHelper::canUseCardFeatures($code)) {
+                if (PaytabsHelper::isCardPayment($code)) {
+                    Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
                 }
 
-                if (PaytabsHelper::canUseCardFeatures($code)) {
-                    if (PaytabsHelper::isCardPayment($code)) {
-                        Configuration::updateValue("allow_associated_methods_{$code}", Tools::getValue("allow_associated_methods_{$code}"));
-                    }
+                $discount_cards  = Tools::getValue("discount_cards_{$code}", array());
+                $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
+                $discount_types  = Tools::getValue("discount_type_{$code}", array());
 
-                    $discount_cards  = Tools::getValue("discount_cards_{$code}", array());
-                    $discount_amounts = Tools::getValue("discount_amount_{$code}", array());
-                    $discount_types  = Tools::getValue("discount_type_{$code}", array());
+                Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
+                Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
+                Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
 
-                    Configuration::updateValue("discount_cards_{$code}", json_encode($discount_cards));
-                    Configuration::updateValue("discount_amount_{$code}", json_encode($discount_amounts));
-                    Configuration::updateValue("discount_type_{$code}", json_encode($discount_types));
+                Configuration::updateValue("discount_enabled_{$code}", (bool)Tools::getValue("discount_enabled_{$code}"));
+            }
 
-                    Configuration::updateValue("discount_enabled_{$code}", (bool)Tools::getValue("discount_enabled_{$code}"));
-                }
+            Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));
 
-                Configuration::updateValue("config_id_{$code}", (int)Tools::getValue("config_id_{$code}"));
+            Configuration::updateValue("alt_currency_enable_{$code}", (bool)Tools::getValue("alt_currency_enable_{$code}"));
+            Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
 
-                Configuration::updateValue("alt_currency_enable_{$code}", (bool)Tools::getValue("alt_currency_enable_{$code}"));
-                Configuration::updateValue("alt_currency_{$code}", Tools::getValue("alt_currency_{$code}"));
+            if (PaytabsHelper::supportIframe($code)) {
+                Configuration::updateValue("payment_form_{$code}", Tools::getValue("payment_form_{$code}"));
             }
         }
         Tools::redirectAdmin("./index.php?tab=AdminModules&configure=$this->name&token=" . Tools::getAdminTokenLite("AdminModules") . "&tab_module=" . $this->tab . "&module_name=$this->name&success");
