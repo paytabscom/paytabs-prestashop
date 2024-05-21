@@ -176,10 +176,10 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
             // $orderId = $this->context->controller->module->currentOrder;
             // $order = new Order((int)$orderId);
-            if(!PS_VERSION_IS_NEW){
+            if (!PS_VERSION_IS_NEW) {
                 $order_id = Order::getOrderByCartId((int)$orderId);
                 $order = new Order((int)$order_id);
-            }else{
+            } else {
                 $order = Order::getByCartId((int)$orderId);
             }
 
@@ -193,9 +193,9 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 }
             }
 
-            if(!PS_VERSION_IS_NEW){
+            if (!PS_VERSION_IS_NEW) {
                 $this->addCartRule16($order, $discountType, $discountAmount);
-            }else{
+            } else {
                 $this->addCartRule($order, $discountType, $discountAmount);
             }
         }
@@ -207,8 +207,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         return;
     }
 
-    public function addCartRule16(Order $order, $discountType, $discountAmount){
-
+    public function addCartRule16(Order $order, $discountType, $discountAmount)
+    {
         $orderInvoice = new OrderInvoice((int)$order->invoice_number);
 
         if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
@@ -253,7 +253,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $order_cart_rule->value_tax_excl = $value_tax_excl;
         $order_cart_rule->free_shipping = $cartRuleObj->free_shipping;
         $order_cart_rule->add();
-        
+
         $order->total_discounts += $order_cart_rule->value;
         $order->total_discounts_tax_incl += $order_cart_rule->value;
         $order->total_discounts_tax_excl += $order_cart_rule->value_tax_excl;
@@ -263,7 +263,6 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         // Update Order
         $order->update();
-
     }
 
     private function addCartRule(Order $order, $discountType, $discountAmount)
