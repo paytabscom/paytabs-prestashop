@@ -47,6 +47,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         $cart_amount = $result->cart_amount;
         $tran_total  = $result->tran_total;
 
+        $payment_status = Configuration::get('PS_OS_PAYMENT');
+
         /**
          * The actual paid amount in PT
          * By default it must be the tran_total
@@ -71,6 +73,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         if ($is_on_hold || $is_pending) {
             // ToDo
+            $payment_status = Configuration::get(PayTabs_PayPage::ON_HOLD_STATUS);
 
             PrestaShopLogger::addLog(
                 "PayTabs: Callback payment needs review, payment_ref = {$transaction_ref}, response: [{$res_msg}]",
@@ -81,24 +84,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 true,
                 null
             );
-
-            return;
-        }
-
-
-        if (!$success) {
-            $logMsg = json_encode($result);
-            PrestaShopLogger::addLog(
-                "PayTabs: Callback payment did not succeed, payment_ref = {$transaction_ref}, response: [{$logMsg}]",
-                3,
-                null,
-                'Cart',
-                $orderId,
-                true,
-                null
-            );
-
-            return;
+            // return;
         }
 
         /**
@@ -158,7 +144,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
         $this->module->validateOrder(
             (int) $cart->id,
-            Configuration::get('PS_OS_PAYMENT'),
+            $payment_status,
             (float) $amountPaid,
             $this->module->displayName . " ({$paymentType})",
             $res_msg, // message

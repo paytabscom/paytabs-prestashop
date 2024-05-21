@@ -13,7 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.12.0');
+define('PAYTABS_PAYPAGE_VERSION', '3.11.0');
 
 require_once __DIR__ . '/paytabs_core.php';
 require_once __DIR__ . '/helpers/order-helper.php';
@@ -30,6 +30,7 @@ class PayTabs_PayPage extends PaymentModule
 
     public $address;
 
+    public const ON_HOLD_STATUS = 'PS_OS_PAYTABS_PENDING';
     /**
      * PayTabs constructor.
      *
@@ -41,7 +42,7 @@ class PayTabs_PayPage extends PaymentModule
         $this->tab                    = 'payments_gateways';
         $this->version                = PAYTABS_PAYPAGE_VERSION;
         $this->author                 = 'PayTabs';
-        $this->controllers            = array('payment', 'validation', 'callback');
+        $this->controllers            = array('payment', 'validation', 'callback', 'ipn');
         $this->currencies             = true;
         $this->currencies_mode        = 'checkbox';
         $this->bootstrap              = true;
@@ -61,6 +62,7 @@ class PayTabs_PayPage extends PaymentModule
      */
     public function install()
     {
+        $this->addOrderState($this->name);
         return parent::install()
             && (PS_VERSION_IS_NEW ? $this->registerHook('paymentOptions') : $this->registerHook('payment'))
             && $this->registerHook('paymentReturn');
@@ -439,6 +441,31 @@ class PayTabs_PayPage extends PaymentModule
 
     //
 
+    public function addOrderState($name) {
+
+        if (!Configuration::get(self::ON_HOLD_STATUS)) {
+
+            $orderState              = new OrderState();
+            $orderState->color       = '#c97200';
+            $orderState->send_email  = false;
+            $orderState->module_name = $name;
+            $orderState->unremovable = true;
+            $orderState->logable     = false;
+            $orderState->name        = array();
+            $languages               = Language::getLanguages(false);
+
+            foreach ($languages as $language) {
+                $orderState->name[$language['id_lang']] = $this->l('Paytabs On-Hold Payment');
+            }
+
+            if ($orderState->add()) {
+                Configuration::updateValue(self::ON_HOLD_STATUS, (int) $orderState->id);
+            }
+        }
+    }
+
+    //
+    
     public function _trans($id, $params = [], $domain = null, $locale = null)
     {
         if (PS_VERSION_IS_NEW) {
