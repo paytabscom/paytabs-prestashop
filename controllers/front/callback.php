@@ -52,6 +52,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
          * By default it must be the tran_total
          * Except in the discount card mode: where it will be the cart_amount
          */
+
         $amountPaid = $tran_total;
 
         if ($failed) {
@@ -189,6 +190,22 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
             }
 
             $this->addCartRule($order, $discountType, $discountAmount);
+        }
+
+        $transaction_data = [
+            'status' => $success,
+            'transaction_ref' => $transaction_ref,
+            'payment_method' => $paymentType,
+            'parent_transaction_ref' => '',
+            'transaction_amount'   => $amountPaid,
+            'transaction_currency' => $cart->id_currency,
+            'transaction_type' => $transaction_type
+        ];
+
+        $order = Order::getByCartId($orderId);
+
+        if (PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)) {
+            PaytabsHelper::log("transaction saved success, order [{$order->id} - {$res_msg}]");
         }
     }
 
