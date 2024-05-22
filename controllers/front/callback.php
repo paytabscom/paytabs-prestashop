@@ -203,8 +203,8 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         ];
 
         $order = Order::getByCartId($orderId);
-        
-        if(PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)){
+
+        if (PayTabs_PayPage_Helper::save_payment_reference($order->id, $transaction_data)) {
             PaytabsHelper::log("transaction saved success, order [{$order->id} - {$res_msg}]");
         }
     }
