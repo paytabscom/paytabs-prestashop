@@ -122,7 +122,7 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
         }
 
         /** @var CustomerCore $customer */
-        $customer = new Customer($cart->id_customer);
+        $customer = new Customer((int)$cart->id_customer);
 
         // PT Discount logic
 
@@ -176,7 +176,12 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
 
             // $orderId = $this->context->controller->module->currentOrder;
             // $order = new Order((int)$orderId);
-            $order = Order::getByCartId($orderId);
+            if (!PS_VERSION_IS_NEW) {
+                $order_id = Order::getOrderByCartId((int)$orderId);
+                $order = new Order((int)$order_id);
+            } else {
+                $order = Order::getByCartId((int)$orderId);
+            }
 
             $discountType = $discountTypes[$index];
             $discountAmount = (float) $cart_amount - (float) $tran_total;
@@ -188,7 +193,11 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
                 }
             }
 
-            $this->addCartRule($order, $discountType, $discountAmount);
+            if (!PS_VERSION_IS_NEW) {
+                $this->addCartRule16($order, $discountType, $discountAmount);
+            } else {
+                $this->addCartRule($order, $discountType, $discountAmount);
+            }
         }
     }
 
@@ -196,6 +205,64 @@ class PayTabs_PayPageCallbackModuleFrontController extends ModuleFrontController
     public function display()
     {
         return;
+    }
+
+    public function addCartRule16(Order $order, $discountType, $discountAmount)
+    {
+        $orderInvoice = new OrderInvoice((int)$order->invoice_number);
+
+        if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
+            $value_tax_incl = Tools::ps_round($orderInvoice->total_paid_tax_incl * $discountAmount / 100, 2);
+            $value_tax_excl = Tools::ps_round($orderInvoice->total_paid_tax_excl * $discountAmount / 100, 2);
+        } else if ($discountType === PaytabsEnum::DISCOUNT_FIXED) {
+            $value_tax_incl = Tools::ps_round($discountAmount, 2);
+            $value_tax_excl = Tools::ps_round($discountAmount / (1 + ($order->getTaxesAverageUsed() / 100)), 2);
+        }
+
+        // Update OrderInvoice
+        $orderInvoice->total_discount_tax_incl += $value_tax_incl;
+        $orderInvoice->total_discount_tax_excl += $value_tax_excl;
+        $orderInvoice->total_paid_tax_incl -= $value_tax_incl;
+        $orderInvoice->total_paid_tax_excl -= $value_tax_excl;
+        $orderInvoice->update();
+
+        // add CartRule
+        $cartRuleObj = new CartRule();
+        $cartRuleObj->date_from = date('Y-m-d H:i:s', strtotime('-1 hour', strtotime($order->date_add)));
+        $cartRuleObj->date_to = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $cartRuleObj->name[Configuration::get('PS_LANG_DEFAULT')] = Tools::getValue('discount_name');
+        $cartRuleObj->quantity = 0;
+        $cartRuleObj->quantity_per_user = 1;
+
+        if ($discountType === PaytabsEnum::DISCOUNT_PERCENTAGE) {
+            $cartRuleObj->reduction_percent = $discountAmount;
+        } else if ($discountType === PaytabsEnum::DISCOUNT_FIXED) {
+            $cartRuleObj->reduction_amount = $value_tax_excl;
+        }
+
+        $cartRuleObj->active = 0;
+        $cartRuleObj->add();
+
+        // add OrderCartRule
+        $order_cart_rule = new OrderCartRule();
+        $order_cart_rule->id_order = (int)$order->id;
+        $order_cart_rule->id_cart_rule = (int)$cartRuleObj->id;
+        $order_cart_rule->id_order_invoice = (int)$orderInvoice->id;
+        $order_cart_rule->name = 'Card Discount order #' . (int)$order->id;;
+        $order_cart_rule->value = $value_tax_incl;
+        $order_cart_rule->value_tax_excl = $value_tax_excl;
+        $order_cart_rule->free_shipping = $cartRuleObj->free_shipping;
+        $order_cart_rule->add();
+
+        $order->total_discounts += $order_cart_rule->value;
+        $order->total_discounts_tax_incl += $order_cart_rule->value;
+        $order->total_discounts_tax_excl += $order_cart_rule->value_tax_excl;
+        $order->total_paid -= $order_cart_rule->value;
+        $order->total_paid_tax_incl -= $order_cart_rule->value;
+        $order->total_paid_tax_excl -= $order_cart_rule->value_tax_excl;
+
+        // Update Order
+        $order->update();
     }
 
     private function addCartRule(Order $order, $discountType, $discountAmount)
