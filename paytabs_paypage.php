@@ -1,7 +1,7 @@
 <?php
 
 /**
- * PayTabs - A 3rd party Payment Module for PrestaShop 1.6 & 1.7
+ * PayTabs - A 3rd party Payment Module for PrestaShop 1.6, 1.7 & 8.x
  *
  * This file is the declaration of the module.
  *
@@ -13,7 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.12.1');
+define('PAYTABS_PAYPAGE_VERSION', '3.12.2');
 
 require_once __DIR__ . '/paytabs_core.php';
 require_once __DIR__ . '/helpers/order-helper.php';
