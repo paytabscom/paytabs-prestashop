@@ -13,7 +13,7 @@ if (!defined('_PS_VERSION_')) {
 }
 
 define('PS_VERSION_IS_NEW', version_compare(_PS_VERSION_, '1.7.0', '>='));
-define('PAYTABS_PAYPAGE_VERSION', '3.13.0');
+define('PAYTABS_PAYPAGE_VERSION', '3.17.0');
 define('PT_DB_TRANSACTIONS_TABLE', _DB_PREFIX_ . 'pt_transactions');
 
 
@@ -68,7 +68,7 @@ class PayTabs_PayPage extends PaymentModule
      */
     public function install()
     {
-        PaytabsHelper::log('Installation: PS: ' . _PS_VERSION . ', Plugin: ' . PAYTABS_PAYPAGE_VERSION);
+        PaytabsHelper::log('Installation: PS: ' . _PS_VERSION_ . ', Plugin: ' . PAYTABS_PAYPAGE_VERSION);
 
         $_pt_db_table_create = $this->generate_transactions_table();
 
